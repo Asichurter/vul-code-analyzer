@@ -7,7 +7,8 @@ from allennlp.common import Registrable
 # TODO: Modules and functions in this file should be validated...
 
 class LossFunc(Registrable, torch.nn.Module):
-    def __init__(self):
+    def __init__(self, ignore_index: int=-100):
+        self.ignore_index = ignore_index
         super().__init__()
 
     def forward(self, pred: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
@@ -40,13 +41,13 @@ class BinaryCrossEntropyLoss(LossFunc):
 @LossFunc.register('cross_entropy')
 class CrossEntropyLoss(LossFunc):
     def forward(self, pred: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
-        return functional.cross_entropy(pred, label)
+        return functional.cross_entropy(pred, label, ignore_index=self.ignore_index)
 
 
 @LossFunc.register('nll')
 class NllLoss(LossFunc):
     def forward(self, pred: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
-        return functional.nll_loss(pred, label)
+        return functional.nll_loss(pred, label, ignore_index=self.ignore_index)
 
 
 @LossFunc.register('mean_square')
