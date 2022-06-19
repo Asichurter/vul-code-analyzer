@@ -15,6 +15,7 @@ class NodeMergeUnifiedStructDecoder(StructDecoder):
                  connect_node_merge_method: str,
                  classifier: Classifier,
                  **kwargs):
+        super().__init__()
         # Set 'twice_trans'=False to uniformly predict two edge types
         self.node_feature_transformer = NodeFeatureAsymmetricTransformer(input_dim, twice_trans=False)
         self.node_merge_method = get_merge_method(connect_node_merge_method)
@@ -25,11 +26,11 @@ class NodeMergeUnifiedStructDecoder(StructDecoder):
                 extra_features: Dict[str, torch.Tensor] = None,
                 **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        :return: probability logits and predicted labels.
+        :return: probability logits and predicted labels, shape: [batch, vn, vn, 4]
         """
         # Shape: [batch, vertice, dim] -> [batch, vertice, vertice, dim]
         v_num = node_features.size(1)
-        node_features_exp = node_features.unsqueeze(2).repeat(1,1,v_num)
+        node_features_exp = node_features.unsqueeze(2).repeat(1,1,v_num,1)
         node_features_exp_t = node_features_exp.transpose(1,2).contiguous()
         node_features_merged = self.node_merge_method(node_features_exp, node_features_exp_t)
 
