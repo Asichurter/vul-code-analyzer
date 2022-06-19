@@ -11,5 +11,5 @@ class StructDecoder(torch.nn.Module, Registrable):
     def forward(self,
                 node_features: torch.Tensor,
                 extra_features: Dict[str, torch.Tensor] = None,
-                **kwargs) -> torch.Tensor:
+                **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError
