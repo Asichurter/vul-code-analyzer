@@ -6,6 +6,7 @@ from common.nn.loss_func import LossFunc
 from pretrain.comp.nn.loss_sampler.loss_sampler import LossSampler
 
 
+@LossSampler.register('full')
 class FullLossSampler(LossSampler):
     def __init__(self, loss_func: LossFunc, **kwargs):
         # Set ignore_index to -1 to exclude padded vertices when calculating loss
