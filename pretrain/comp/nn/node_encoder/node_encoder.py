@@ -4,14 +4,16 @@ import torch
 
 from allennlp.common.registrable import Registrable
 
+print('This is NodeEncoder')
+
 class NodeEncoder(torch.nn.Module, Registrable):
     def __init__(self,
-                 in_dim: int,
-                 out_dim: int,
+                 input_dim: int,
+                 output_dim: int,
                  **kwargs):
         super().__init__()
-        self.in_dim = in_dim
-        self.out_dim = out_dim
+        self.input_dim = input_dim
+        self.output_dim = output_dim
 
     def forward(self,
                 node_features: torch.Tensor,
@@ -20,6 +22,6 @@ class NodeEncoder(torch.nn.Module, Registrable):
         raise NotImplementedError
 
     def get_output_dim(self):
-        return self.out_dim
+        return self.output_dim
 
 

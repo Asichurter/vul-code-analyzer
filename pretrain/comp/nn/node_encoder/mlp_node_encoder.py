@@ -2,8 +2,10 @@ from typing import List, Dict
 
 import torch
 
+print('Importing NodeEncoder')
 from pretrain.comp.nn.node_encoder.node_encoder import NodeEncoder
-from common.nn import unified_mlp_module
+print('Importing unified_mlp_module')
+from common.nn.mlp import unified_mlp_module
 
 
 @NodeEncoder.register('mlp')
@@ -14,12 +16,13 @@ class MLPNodeEncoder(NodeEncoder):
     """
     def __init__(self,
                  input_dim: int,
+                 output_dim: int,
                  hidden_dims: List[int],
                  activation: str = 'relu',
                  dropout: float = 0.,
                  **kwargs):
-        super().__init__(in_dim=input_dim, out_dim=hidden_dims[-1])
-        self.mlp = unified_mlp_module([input_dim] + hidden_dims, activation, dropout)
+        super().__init__(input_dim, hidden_dims[-1], **kwargs)
+        self.mlp = unified_mlp_module([input_dim] + hidden_dims + [output_dim], activation, dropout)
 
     def forward(self,
                 node_features: torch.Tensor,
