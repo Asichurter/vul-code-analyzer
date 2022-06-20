@@ -34,8 +34,8 @@ class LossFunc(Registrable, torch.nn.Module):
 
 @LossFunc.register('binary_cross_entropy')
 class BinaryCrossEntropyLoss(LossFunc):
-    def forward(self, pred: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
-        return functional.binary_cross_entropy(pred, label)
+    def forward(self, pred: torch.Tensor, label: torch.Tensor, **kwargs) -> torch.Tensor:
+        return functional.binary_cross_entropy(pred, label, **kwargs)
 
 
 @LossFunc.register('cross_entropy')
