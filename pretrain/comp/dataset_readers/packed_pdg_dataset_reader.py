@@ -55,13 +55,14 @@ class PackedLinePDGDatasetReader(DatasetReader):
         :param max_vertice:
         :return:
         """
-        matrix = torch.zeros((line_count, line_count), dtype=torch.long)
+        # To cover the last line (line_count-th), we have to allocate one more line here.
+        matrix = torch.zeros((line_count+1, line_count+1), dtype=torch.long)
         matrix += 4       # default no dependency
         for edge in edges:
             tail, head, etype = re.split(',| ', edge)   # tail/head vertice index start from 1 instead of 0
             tail, head, etype = int(tail), int(head), int(etype)
             # Ignore uncovered vertices (lines)
-            if tail >= line_count or head >= line_count:
+            if tail > line_count or head > line_count:
                 continue
             matrix[tail, head] = etype
         return matrix
@@ -110,8 +111,10 @@ class PackedLinePDGDatasetReader(DatasetReader):
                 break
 
         if self.only_keep_complete_lines:
-            line_tokens = line_tokens[:-current_column]
-            line_idxes = line_idxes[:-current_column]
+            # FixBug: Empty tokens when 'current_column' is 0.
+            if current_column > 0:
+                line_tokens = line_tokens[:-current_column]
+                line_idxes = line_idxes[:-current_column]
 
         line_tokens, line_idxes = self.post_handle_special_tokenizer_tokens(line_tokens, line_idxes)
         return line_tokens, torch.LongTensor(line_idxes), current_line-1
@@ -134,6 +137,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
             'edges': TensorField(edge_matrix),
             'vertice_num': TensorField(torch.Tensor([line_count])), # num. of line is vertice num.
         }
+
         return Instance(fields)
 
 
@@ -144,5 +148,8 @@ class PackedLinePDGDatasetReader(DatasetReader):
             vol_path = os.path.join(data_base_path, f'vol{vol}')
             logger.info('PackedLinePDGDatasetReader.read', f'Reading Vol. {vol}')
             for item in tqdm(os.listdir(vol_path)):
-                pdg_data_item = read_dumped(os.path.join(vol_path, item))
-                yield self.text_to_instance(pdg_data_item)
+                try:
+                    pdg_data_item = read_dumped(os.path.join(vol_path, item))
+                    yield self.text_to_instance(pdg_data_item)
+                except Exception as e:
+                    logger.error('read', f'file path: {os.path.join(vol_path, item)}, error: {str(e)}')
