@@ -98,9 +98,10 @@ class CodeLinePDGAnalyzer(Model):
                                                                          line_idxes, vertice_num)
         # Shape: [batch, vn(max_lines), dim]
         node_features = self.encode_node_features(code_line_features)
+
         # Shape: [batch, vn, vn, 4]
         pred_edge_probs, pred_edge_labels = self.struct_decoder(node_features)
-        loss = self.loss_sampler.get_loss(edges, pred_edge_probs)
+        loss = self.loss_sampler.get_loss(edges, pred_edge_probs, vertice_num)
 
         return {
             'edge_logits': pred_edge_probs,
