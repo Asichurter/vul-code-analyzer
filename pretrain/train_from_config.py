@@ -6,22 +6,20 @@ from allennlp.commands.train import train_model_from_file
 
 sys.path.extend(['/data1/zhijietang/projects/vul-code-analyzer'])
 
+from utils.cmd_args import read_train_from_config_args
 from utils.file import dump_json
 from utils import GlobalLogger as mylogger
 
-# For importing customed modules
+# For importing costumed modules
 from pretrain import *
 from common import *
 
-jsonnet_file_name = f'config/jsonnet/test_line_pdg_pretrain.jsonnet'
+args = read_train_from_config_args()
+
 converted_json_file_path = f'/data1/zhijietang/temp/config.json'
 serialization_dir = '/data1/zhijietang/vul_data/run_logs/pretrain/{}'
 
-# if args.config_path == '':
-#     config_json = json.loads(_jsonnet.evaluate_file(jsonnet_file_name))
-# else:
-#     config_json = json.loads(_jsonnet.evaluate_file(args.config_path))
-config_json = json.loads(_jsonnet.evaluate_file(jsonnet_file_name))
+config_json = json.loads(_jsonnet.evaluate_file(args.config))
 
 extra = config_json.pop('extra')
 version = extra.get('version')
@@ -55,3 +53,12 @@ ret = train_model_from_file(
 )
 # Exit to release GPU memory
 sys.exit(0)
+
+
+# [[0,0,1],
+#  [0,1,0],
+#  [0,0,0]]
+#
+# [[1,0,1],
+#  [0,1,0],
+#  [1,0,0]]
