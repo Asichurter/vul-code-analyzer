@@ -99,7 +99,7 @@ class BCELoss(LossFunc):
 
     def forward(self, pred: torch.Tensor, label: torch.Tensor, **kwargs) -> torch.Tensor:
         # align batch_size of predictions and labels in tail batch
-        pred, label = self.align_pred_label_batch_size(pred, label)
-        pred = pred.view(pred.size(0),)
-        label = label.view(pred.size(0),)
+        # pred, label = self.align_pred_label_batch_size(pred, label)
+        # pred = pred.view(pred.size(0),)
+        # label = label.view(pred.size(0),)
         return self._loss(pred, label.float(), **kwargs)  # float type tensor is expected for 'label'

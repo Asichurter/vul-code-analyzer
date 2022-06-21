@@ -27,6 +27,9 @@ def sample_2D_mask_by_count_in_batch_dim(
     sampled_idxes = []
     for i in range(bsz):
         sampled_num_i = int(sample_num_list[i].item())
+        # Skip null sampling.
+        if sampled_num_i == 0:
+            continue
         # Selected indexes are in 1D form, reshape to 2D.
         i_idxes_to_be_sampled = torch.masked_select(batch_candidate_idx_list, batch_candidate_idx_list[:, 0:1] == i).view(-1, 2)
         i_sampled_idxes = i_idxes_to_be_sampled[torch.randperm(i_idxes_to_be_sampled.size(0))[:sampled_num_i]]

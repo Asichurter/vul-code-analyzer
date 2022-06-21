@@ -1,6 +1,8 @@
 from .comp.dataset_readers.packed_pdg_dataset_reader import PackedLinePDGDatasetReader
 from .comp.nn.node_encoder.mlp_node_encoder import MLPNodeEncoder
-from .comp.nn.loss_sampler.full_loss_sampler import FullLossSampler
-from .comp.nn.struct_decoder.directed.simple_struct_decoder import NodeMergeUnifiedStructDecoder
+from .comp.nn.loss_sampler.unified_loss_sampler import UnifiedFullLossSampler, UnifiedBalancedLossSampler
+from .comp.nn.loss_sampler.separated_loss_sampler import SeparatedFullLossSampler, SeparatedBalancedLossSampler
+from .comp.nn.struct_decoder.directed.simple_unified_struct_decoder import NodeMergeUnifiedStructDecoder
+from .comp.nn.struct_decoder.directed.simple_separated_struct_decoder import BilinearSeparatedStructDecoder
 
 from .model.pdg_line_analyzer import CodeLinePDGAnalyzer
