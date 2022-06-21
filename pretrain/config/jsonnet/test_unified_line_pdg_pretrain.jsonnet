@@ -1,4 +1,4 @@
-local data_vol_base_path = '/data1/zhijietang/vul_data/graph_temp/packed_data_jsons/';
+local data_vol_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_data/';
 local pretrained_model = 'microsoft/codebert-base';
 local code_embed_dim = 768;
 local code_encode_dim = 768;
@@ -36,18 +36,17 @@ local code_namespace = "code_tokens";
               additional_special_tokens: additional_special_tokens
             }
         },
-        volume_range: [999,999],
+        volume_range: [29,39],
         pdg_max_vertice: max_lines,
         max_lines: max_lines,
         code_max_tokens: code_max_tokens,
         tokenized_newline_char: 'Ċ',
-//        add_EOS_token: '</s>',
-//        skip_first_token_line_index: true,
         special_tokenizer_token_handler_type: "codebert",
         only_keep_complete_lines: true,
         code_cleaner: {
             type: "space_sub",
         },
+        unified_label: true,
     },
 
     train_data_path: data_vol_base_path,
@@ -98,7 +97,7 @@ local code_namespace = "code_tokens";
             },
         },
         loss_sampler: {
-            type: "full",
+            type: "unified_balanced",
             loss_func: {
                 type: "nll"
             }
@@ -107,7 +106,7 @@ local code_namespace = "code_tokens";
     },
 
   data_loader: {
-    batch_size: 8,
+    batch_size: 64,
     shuffle: true,
   },
   trainer: {
