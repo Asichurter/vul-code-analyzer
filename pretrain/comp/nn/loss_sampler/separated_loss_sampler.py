@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Tuple
 
 import torch
 
@@ -16,7 +16,7 @@ class SeparatedFullLossSampler(LossSampler):
     def get_loss(self,
                  edge_matrix: torch.Tensor,
                  predicted_matrix: torch.Tensor,
-                 vertice_num: torch.Tensor) -> torch.Tensor:
+                 vertice_num: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor]:
         """
         :param edge_matrix: [batch, max_vertice, max_vertice]
         :param predicted_matrix: [batch, max_vertice, max_vertice, edge_type_num]
@@ -24,7 +24,7 @@ class SeparatedFullLossSampler(LossSampler):
         :return:
         """
         # Drop 0-th row and column, since line index starts from 1.
-        edge_matrix = edge_matrix[:, :, 1:, 1:]
+        # edge_matrix = edge_matrix[:, :, 1:, 1:]
         # Minus one to make label range [0,1].
         edge_matrix -= 1
         assert edge_matrix.shape == predicted_matrix.shape[:3], "Unmatched shape between label edges and predicted edges"
@@ -32,7 +32,8 @@ class SeparatedFullLossSampler(LossSampler):
 
         # Manually operating "masked_mean"
         loss_mask = (edge_matrix != -1).int()
-        return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, loss_mask)
+        return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, loss_mask), \
+               loss_mask
 
 
 @LossSampler.register('separated_balanced')
@@ -47,9 +48,9 @@ class SeparatedBalancedLossSampler(LossSampler):
     def get_loss(self,
                  edge_matrix: torch.Tensor,
                  predicted_matrix: torch.Tensor,
-                 vertice_num: torch.Tensor) -> torch.Tensor:
+                 vertice_num: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor]:
         # Drop 0-th row and column, since line index starts from 1.
-        edge_matrix = edge_matrix[:, :, 1:, 1:]
+        # edge_matrix = edge_matrix[:, :, 1:, 1:]
         # Minus one to make label range [0,1].
         edge_matrix -= 1
         assert edge_matrix.shape == predicted_matrix.shape, "Unmatched shape between label edges and predicted edges"
@@ -68,4 +69,5 @@ class SeparatedBalancedLossSampler(LossSampler):
         edge_count = stat_true_count_in_batch_dim(edge_mask)
         sampled_non_edge_mask = sample_2D_mask_by_count_in_batch_dim(non_edge_mask, edge_count)
         sampled_mask = sampled_non_edge_mask.bool() | edge_mask
-        return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, sampled_mask)
+        return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, sampled_mask), \
+               sampled_mask.view(bsz, 2, v_num, v_num)

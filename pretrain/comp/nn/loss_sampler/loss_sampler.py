@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import torch
 
 from allennlp.common.registrable import Registrable
@@ -15,7 +17,7 @@ class LossSampler(Registrable):
     def get_loss(self,
                  edge_matrix: torch.Tensor,
                  predicted_matrix: torch.Tensor,
-                 vertice_num: torch.Tensor) -> torch.Tensor:
+                 vertice_num: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor]:
         raise NotImplementedError
 
     def cal_matrix_masked_loss_mean(self,

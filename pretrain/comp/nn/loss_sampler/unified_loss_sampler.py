@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Tuple
 
 import torch
 
@@ -17,7 +17,7 @@ class UnifiedFullLossSampler(LossSampler):
     def get_loss(self,
                  edge_matrix: torch.Tensor,
                  predicted_matrix: torch.Tensor,
-                 vertice_num: torch.Tensor) -> torch.Tensor:
+                 vertice_num: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor]:
         """
         :param edge_matrix: [batch, max_vertice, max_vertice]
         :param predicted_matrix: [batch, max_vertice, max_vertice, edge_type_num]
@@ -25,7 +25,7 @@ class UnifiedFullLossSampler(LossSampler):
         :return:
         """
         # Drop 0-th row and column, since line index start from 1.
-        edge_matrix = edge_matrix[:, 1:, 1:]
+        # edge_matrix = edge_matrix[:, 1:, 1:]
         # Since edge matrix contains padded zeros, we minus 1 to make them to be -1,
         # and exclude them when calculating loss.
         edge_matrix -= 1
@@ -34,14 +34,15 @@ class UnifiedFullLossSampler(LossSampler):
 
         # Manually operating "masked_mean"
         loss_mask = (edge_matrix != -1).int()
-        return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, loss_mask)
+        return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, loss_mask), \
+               loss_mask
 
 
 @LossSampler.register('unified_balanced')
 class UnifiedBalancedLossSampler(LossSampler):
     """
     This sampler balances edged pairs and non-edged pairs by sampling partial non-edged pairs
-    from all the empty positions to make the have the same size.
+    from all the empty positions to make them have the same size.
     """
     def __init__(self, loss_func: LossFunc, **kwargs):
         super().__init__(loss_func, **kwargs)
@@ -49,9 +50,9 @@ class UnifiedBalancedLossSampler(LossSampler):
     def get_loss(self,
                  edge_matrix: torch.Tensor,
                  predicted_matrix: torch.Tensor,
-                 vertice_num: torch.Tensor) -> torch.Tensor:
+                 vertice_num: torch.Tensor) -> Tuple[torch.Tensor,torch.Tensor]:
         # Drop 0-th row and column, since line index start from 1.
-        edge_matrix = edge_matrix[:, 1:, 1:]
+        # edge_matrix = edge_matrix[:, 1:, 1:]
         # Since edge matrix contains padded zeros, we minus 1 to make them to be -1,
         # and exclude them when calculating loss.
         edge_matrix -= 1
@@ -74,4 +75,5 @@ class UnifiedBalancedLossSampler(LossSampler):
         # We use all the edged pairs and sampled partial edged pairs to compute final loss.
         # W.r.t: len(edge) >= len(non_edge)
         sampled_mask = sampled_non_edge_mask.bool() | edge_mask
-        return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, sampled_mask)
+        return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, sampled_mask), \
+               sampled_mask.view(bsz, v_num, v_num)
