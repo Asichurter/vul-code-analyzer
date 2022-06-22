@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 
 import torch
 from allennlp.data import Vocabulary, TextFieldTensors
@@ -6,6 +6,7 @@ from allennlp.data import Vocabulary, TextFieldTensors
 from allennlp.models import Model
 from allennlp.modules import TextFieldEmbedder, Seq2SeqEncoder
 from allennlp.nn.util import get_text_field_mask
+from allennlp.training.metrics import Metric
 
 from pretrain.comp.nn.line_extractor import LineExtractor
 from pretrain.comp.nn.loss_sampler.loss_sampler import LossSampler
@@ -25,6 +26,7 @@ class CodeLinePDGAnalyzer(Model):
         struct_decoder: StructDecoder,
         loss_sampler: LossSampler,
         drop_tokenizer_special_token_type: str = 'codebert',
+        metric: Optional[Metric] = None,
         **kwargs
     ):
         super().__init__(vocab, **kwargs)
@@ -34,6 +36,7 @@ class CodeLinePDGAnalyzer(Model):
         self.line_extractor = line_extractor
         self.struct_decoder = struct_decoder
         self.loss_sampler = loss_sampler
+        self.metric = metric
         self.drop_tokenizer_special_token_type = drop_tokenizer_special_token_type
 
     def drop_tokenizer_special_tokens(self, embedded_code, code_mask):
@@ -101,9 +104,23 @@ class CodeLinePDGAnalyzer(Model):
 
         # Shape: [batch, vn, vn, 4]
         pred_edge_probs, pred_edge_labels = self.struct_decoder(node_features)
-        loss = self.loss_sampler.get_loss(edges, pred_edge_probs, vertice_num)
+        loss, loss_mask = self.loss_sampler.get_loss(edges, pred_edge_probs, vertice_num)
+
+        if self.metric is not None:
+            self.metric(pred_edge_labels, edges, loss_mask)
 
         return {
             'edge_logits': pred_edge_probs,
             'loss': loss
         }
+
+    def get_metrics(self, reset: bool = False) -> Dict[str, float]:
+        metrics: Dict[str, float] = {}
+        if self.metric is not None:
+            metric = self.metric.get_metric(reset)
+            # no metric name returned, use its class name instead
+            if type(metric) != dict:
+                metric_name = self.metric.__class__.__name__
+                metric = {metric_name: metric}
+            metrics.update(metric)
+        return metrics
