@@ -95,11 +95,10 @@ class BCEWithLogitsLoss(LossFunc):
 class BCELoss(LossFunc):
     def __init__(self):
         super().__init__()
-        self._loss = torch.nn.BCELoss()
 
     def forward(self, pred: torch.Tensor, label: torch.Tensor, **kwargs) -> torch.Tensor:
         # align batch_size of predictions and labels in tail batch
         # pred, label = self.align_pred_label_batch_size(pred, label)
         # pred = pred.view(pred.size(0),)
         # label = label.view(pred.size(0),)
-        return self._loss(pred, label.float(), **kwargs)  # float type tensor is expected for 'label'
+        return torch.nn.functional.binary_cross_entropy(pred, label.float(), **kwargs)  # float type tensor is expected for 'label'
