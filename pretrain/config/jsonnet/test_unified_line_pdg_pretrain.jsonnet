@@ -13,8 +13,7 @@ local code_namespace = "code_tokens";
     extra: {
         version: 1,
         decs: {
-            data: "openstack, raw",
-            main: "codebert + exp(diff)",
+            main: "unified edge prediction",
         },
     },
 
@@ -102,6 +101,9 @@ local code_namespace = "code_tokens";
                 type: "nll"
             }
         },
+        metric: {
+            type: "unified_mask_accuracy",
+        },
         drop_tokenizer_special_token_type: "codebert"
     },
 
@@ -110,7 +112,7 @@ local code_namespace = "code_tokens";
     shuffle: true,
   },
   trainer: {
-    num_epochs: 10,
+    num_epochs: 25,
     patience: null,
     cuda_device: 0,
     validation_metric: "-loss",

@@ -35,7 +35,7 @@ local code_namespace = "code_tokens";
               additional_special_tokens: additional_special_tokens
             }
         },
-        volume_range: [39,39],
+        volume_range: [29,39],
         pdg_max_vertice: max_lines,
         max_lines: max_lines,
         code_max_tokens: code_max_tokens,
@@ -90,15 +90,18 @@ local code_namespace = "code_tokens";
                 type: "bce"
             }
         },
+        metric: {
+            type: "separated_mask_accuracy",
+        },
         drop_tokenizer_special_token_type: "codebert"
     },
 
   data_loader: {
-    batch_size: 64,
+    batch_size: 32,
     shuffle: true,
   },
   trainer: {
-    num_epochs: 10,
+    num_epochs: 25,
     patience: null,
     cuda_device: 1,
     validation_metric: "-loss",
