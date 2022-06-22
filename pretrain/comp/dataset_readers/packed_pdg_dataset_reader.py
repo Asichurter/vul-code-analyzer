@@ -66,6 +66,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
         else:
             matrix = torch.zeros((2, line_count+1, line_count+1))
             matrix += 1  # default no dependency
+
         for edge in edges:
             tail, head, etype = re.split(',| ', edge)   # tail/head vertice index start from 1 instead of 0
             tail, head, etype = int(tail), int(head), int(etype)
@@ -79,7 +80,12 @@ class PackedLinePDGDatasetReader(DatasetReader):
                     matrix[0, tail, head] = 2   # 2 refers to edge
                 if etype == 3 or etype == 2:
                     matrix[1, tail, head] = 2
-        return matrix
+
+        # Drop 0-th row and column, since line index starts from 1.
+        if self.unified_label:
+            return matrix[1:, 1:]
+        else:
+            return matrix[:, 1:, 1:]
 
 
     def pre_handle_special_tokenizer_tokens(self, tokens: List[Token]) -> List[Token]:
