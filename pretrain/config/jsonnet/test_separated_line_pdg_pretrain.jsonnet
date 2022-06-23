@@ -6,15 +6,24 @@ local node_dim = 64;
 
 local code_max_tokens = 256;
 local max_lines = 50;
-local additional_special_tokens = [];
 local code_namespace = "code_tokens";
+
+local tokenizer_type = "codebert";
+local mlm_mask_token = "<MLM>";
+local additional_special_tokens = [mlm_mask_token];
 
 {
     extra: {
-        version: 2,
+        version: 3,
         decs: {
-            main: "separated edge prediction",
+            main: "mlm + separated edge prediction",
         },
+    },
+
+    vocabulary: {
+        type: "from_pretrained_transformer",
+        model_name: pretrained_model,
+        namespace: code_namespace
     },
 
     dataset_reader: {
@@ -35,12 +44,12 @@ local code_namespace = "code_tokens";
               additional_special_tokens: additional_special_tokens
             }
         },
-        volume_range: [29,39],
+        volume_range: [39,39],
         pdg_max_vertice: max_lines,
         max_lines: max_lines,
         code_max_tokens: code_max_tokens,
         tokenized_newline_char: 'Ċ',
-        special_tokenizer_token_handler_type: "codebert",
+        special_tokenizer_token_handler_type: tokenizer_type,
         only_keep_complete_lines: true,
         code_cleaner: {
             type: "space_sub",
@@ -52,6 +61,22 @@ local code_namespace = "code_tokens";
 
     model: {
         type: "code_line_pdg_analyzer",
+        code_objectives: [
+            {
+                type: "mlm",
+                name: "mlm",
+                code_namespace: code_namespace,
+                token_dimension: code_embed_dim,
+                as_code_embedder: true,
+                tokenizer_type: tokenizer_type,
+                token_id_key: "token_ids",
+                mask_token: mlm_mask_token,
+                sample_ratio: 0.15,
+                mask_ratio: 0.8,
+                replace_ratio: 0.1,
+            }
+        ],
+
         code_embedder: {
           token_embedders: {
             code_tokens: {
@@ -93,7 +118,7 @@ local code_namespace = "code_tokens";
         metric: {
             type: "separated_mask_accuracy",
         },
-        drop_tokenizer_special_token_type: "codebert"
+        drop_tokenizer_special_token_type: tokenizer_type,
     },
 
   data_loader: {
@@ -103,7 +128,7 @@ local code_namespace = "code_tokens";
   trainer: {
     num_epochs: 25,
     patience: null,
-    cuda_device: 1,
+    cuda_device: 2,
     validation_metric: "-loss",
     optimizer: {
       type: "adam",

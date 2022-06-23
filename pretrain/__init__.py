@@ -6,5 +6,6 @@ from .comp.nn.struct_decoder.directed.simple_unified_struct_decoder import NodeM
 from .comp.nn.struct_decoder.directed.simple_separated_struct_decoder import BilinearSeparatedStructDecoder
 from .comp.metric.unified_pretrain_metric import UnifiedMaskAccuracy
 from .comp.metric.separated_pretrain_metric import SeparatedMaskAccuracy
+from .comp.nn.code_objective.mlm import MlmObjective
 
 from .model.pdg_line_analyzer import CodeLinePDGAnalyzer
