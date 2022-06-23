@@ -9,13 +9,14 @@ local max_lines = 50;
 local code_namespace = "code_tokens";
 
 local tokenizer_type = "codebert";
-local additional_special_tokens = [];
+local mlm_mask_token = "<MLM>";
+local additional_special_tokens = [mlm_mask_token];
 
 {
     extra: {
-        version: 2,
+        version: 3,
         decs: {
-            main: "separated edge prediction",
+            main: "mlm + separated edge prediction",
             vol: "29 ~ 69"
         },
     },
@@ -61,7 +62,21 @@ local additional_special_tokens = [];
 
     model: {
         type: "code_line_pdg_analyzer",
-        code_objectives: [],
+        code_objectives: [
+            {
+                type: "mlm",
+                name: "mlm",
+                code_namespace: code_namespace,
+                token_dimension: code_embed_dim,
+                as_code_embedder: true,
+                tokenizer_type: tokenizer_type,
+                token_id_key: "token_ids",
+                mask_token: mlm_mask_token,
+                sample_ratio: 0.15,
+                mask_ratio: 0.8,
+                replace_ratio: 0.1,
+            }
+        ],
 
         code_embedder: {
           token_embedders: {
@@ -114,7 +129,7 @@ local additional_special_tokens = [];
   trainer: {
     num_epochs: 25,
     patience: null,
-    cuda_device: 1,
+    cuda_device: 2,
     validation_metric: "-loss",
     optimizer: {
       type: "adam",
@@ -126,7 +141,7 @@ local additional_special_tokens = [];
       { type: "model_param_stat" },
       {
         type: "save_jsonnet_config",
-        file_src: 'config/jsonnet/test_separated_line_pdg_pretrain.jsonnet',
+        file_src: 'config/jsonnet/test_separated_line_pdg_mlm_pretrain.jsonnet',
       },
       {
         type: "save_epoch_model",
