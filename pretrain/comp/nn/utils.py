@@ -2,6 +2,11 @@ import torch
 
 
 def stat_true_count_in_batch_dim(mask: torch.Tensor):
+    """
+    Count the number of true elements among each row of the mask.
+    Input can be arbitrary shape.
+    It wil return a 1D int tensor to indicate the count of 'True' in the batch.
+    """
     bsz = mask.size(0)
     idx_list = mask.nonzero()
 
@@ -17,6 +22,14 @@ def sample_2D_mask_by_count_in_batch_dim(
         source_mask: torch.Tensor,
         sample_num_list: torch.Tensor
 ) -> torch.Tensor:
+    """
+    Sample 'True' value from from the 2D input mask based on the given
+    count of each row.
+    Source mask must be in 2D shape and count tensor should be derived from
+    torch.nonzero() method.
+    Return a new mask that only sampled 'True' positions are of True value.
+    """
+
     sampled_mask = torch.zeros_like(source_mask)
     bsz = source_mask.size(0)
     batch_candidate_idx_list = source_mask.nonzero()
@@ -43,6 +56,7 @@ def sample_2D_mask_by_count_in_batch_dim(
     # Set sampled positions to be 1.
     sampled_mask[sampled_idxes[:, 0], sampled_idxes[:, 1]] = 1
     return sampled_mask
+
 
 def replace_int_value(tensor: torch.Tensor,
                       replaced_value: int,

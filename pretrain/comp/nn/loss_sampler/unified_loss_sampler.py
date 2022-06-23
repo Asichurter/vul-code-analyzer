@@ -3,7 +3,7 @@ from typing import Dict, Tuple
 import torch
 
 from common.nn.loss_func import LossFunc
-from pretrain.comp.nn.loss_sampler.common_utils import stat_true_count_in_batch_dim, sample_2D_mask_by_count_in_batch_dim
+from pretrain.comp.nn.utils import stat_true_count_in_batch_dim, sample_2D_mask_by_count_in_batch_dim
 from pretrain.comp.nn.loss_sampler.loss_sampler import LossSampler
 
 

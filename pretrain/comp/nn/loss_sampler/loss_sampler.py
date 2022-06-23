@@ -5,7 +5,7 @@ import torch
 from allennlp.common.registrable import Registrable
 
 from common.nn.loss_func import LossFunc
-from pretrain.comp.nn.loss_sampler.common_utils import replace_int_value
+from pretrain.comp.nn.utils import replace_int_value
 
 
 class LossSampler(Registrable):
