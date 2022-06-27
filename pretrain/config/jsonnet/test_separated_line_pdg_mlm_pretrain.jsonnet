@@ -14,9 +14,9 @@ local additional_special_tokens = [mlm_mask_token];
 
 {
     extra: {
-        version: 3,
+        version: 4,
         decs: {
-            main: "mlm + separated edge prediction",
+            main: "mlm (neg_sampling=5) + separated edge prediction",
             vol: "29 ~ 69"
         },
     },
@@ -75,6 +75,7 @@ local additional_special_tokens = [mlm_mask_token];
                 sample_ratio: 0.15,
                 mask_ratio: 0.8,
                 replace_ratio: 0.1,
+                negative_sampling_k: 5,
             }
         ],
 
@@ -129,7 +130,7 @@ local additional_special_tokens = [mlm_mask_token];
   trainer: {
     num_epochs: 25,
     patience: null,
-    cuda_device: 2,
+    cuda_device: 3,
     validation_metric: "-loss",
     optimizer: {
       type: "adam",

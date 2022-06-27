@@ -1,4 +1,4 @@
-from typing import Callable, Tuple, Dict
+from typing import Callable, Tuple, Dict, Optional
 
 import torch
 import torch.nn.functional as F
@@ -23,6 +23,7 @@ class MlmObjective(CodeObjective):
                  sample_ratio: float = 0.15,    # how many tokens to sample
                  mask_ratio: float = 0.8,       # how many sampled tokens to mask
                  replace_ratio: float = 0.1,    # how many sampled tokens to replace with a random token
+                 negative_sampling_k: Optional[int] = None,
                  **kwargs):
         super().__init__(vocab,
                          name=name,
@@ -41,6 +42,8 @@ class MlmObjective(CodeObjective):
         self.token_id_key = token_id_key
         self.tokenizer_type = tokenizer_type
         self.mask_token = mask_token
+        self.negative_sampling_k = negative_sampling_k
+
         # self.mask_token_id = self.vocab.get_token_index(mask_token, self.code_namespace)
 
 
@@ -117,21 +120,45 @@ class MlmObjective(CodeObjective):
 
         return code, sampled_mask, original_sampled_token_ids
 
-        # mask_count = (sampled_count * self.mask_ratio).int()
-        # replace_count = (sampled_count * self.replace_ratio).int()
 
-        # mask_token_mask = sample_2D_mask_by_count_in_batch_dim(sampled_mask, mask_count)
-        # #########################
-        # #     A     B     O     #
-        # #------------------------
-        # #     0     *     0     #
-        # #     1     1     0     #
-        # #     1     0     1     #
-        # #########################
-        # replace_sample_candidate_mask = (sampled_mask ^ mask_token_mask & sampled_mask)
-        # replace_mask = sample_2D_mask_by_count_in_batch_dim(replace_sample_candidate_mask, replace_count)
-        #
-        # # todo: Use mask_token_mask and replace_mask to mask and replace tokens.
+    def mlm_loss(self, pred_logits, label):
+        """
+        Produce MLM loss based on predicted logits and real token ids of masked tokens.
+        Negative sampling can be done here to mask some negative items when computing
+        probability with softmax().
+        :param pred_logits: Logits of masked tokens. Shape: [sampled_size, vocab_size]
+        :param label: Original token ids of masked tokens. Shape: [sampled_size,]
+        """
+        device = pred_logits.device
+        sampled_size, vocab_size = pred_logits.size(0), pred_logits.size(1)
+
+        # Maybe do negative sampling.
+        if self.negative_sampling_k is not None:
+            mask = torch.zeros_like(pred_logits, dtype=torch.bool, device=device)
+            first_dim_idx = torch.arange(0,sampled_size, device=device)
+            # First, we should ensure the label indexes are not masked.
+            mask[first_dim_idx, label] = True
+
+            # Then, for each row (predicted word), we uniformly sample K negative word.
+            # [NOTE]: Since the multinomial sampling does not exclude the index of label,
+            #         the actual sampled negative samples may be K-1 sometimes!
+            neg_sampled_indexes = torch.multinomial(torch.ones_like(pred_logits, device=device), self.negative_sampling_k, replacement=False)
+            mask = mask.scatter(1, neg_sampled_indexes, True)
+
+            # -----------------------------------------------------------------------------
+            # WARN: THE IMPLEMENTATION BELOW MAY BE VERY SLOW (3~4 s/it).
+            # -----------------------------------------------------------------------------
+            # count = torch.ones((sampled_size,), dtype=torch.long) * self.negative_sampling_k
+            # neg_sampled_mask = sample_2D_mask_by_count_in_batch_dim(~mask, count)
+            # mask = mask | neg_sampled_mask
+            # -----------------------------------------------------------------------------
+
+            # Finally, we set the logits of masked positions to be -INF.
+            pred_logits = pred_logits.masked_fill(~mask, float('-inf'))
+
+        pred_probs = pred_logits.softmax(dim=-1)
+        loss  = F.cross_entropy(pred_probs, label)
+        return loss
 
 
     def forward(self, **kwargs) -> Dict:
@@ -148,9 +175,9 @@ class MlmObjective(CodeObjective):
 
         sampled_idxes = sampled_mask.nonzero()
         sampled_code_embeddings = code_embeddings[sampled_idxes[:,0], sampled_idxes[:,1], :]
-        sampled_code_outputs = self.output_weight(sampled_code_embeddings).softmax(dim=-1)
+        sampled_code_outputs = self.output_weight(sampled_code_embeddings) # .softmax(dim=-1)
 
-        mlm_loss = F.cross_entropy(sampled_code_outputs, original_sampled_token_ids)
+        mlm_loss = self.mlm_loss(sampled_code_outputs, original_sampled_token_ids)
         output_dict =  {'loss': mlm_loss}
         output_dict.update(code_embed_outputs)
         return output_dict
