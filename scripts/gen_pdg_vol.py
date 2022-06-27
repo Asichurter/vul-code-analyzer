@@ -14,7 +14,7 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 code_base_path = '/root/data/cppfiles/'
-dump_path = '/root/data/packed_data_jsons/'
+dump_path = '/root/data/packed_data_jsons_new/'
 temp_dot_dir = '/root/data/temp/dot_temp_{vol}/'
 temp_bin_path = '/root/data/temp/temp_pdg_{vol}.bin'
 target_dot_filename = '0-pdg.dot'  # guessed filename in the output directory, needs to be validated
@@ -59,6 +59,14 @@ def convert_c_cpp_type(origin_file_path):
     os.system(f'rm {origin_file_path}')
     return new_file_path
 
+def preprocess_code_file(code_file_path: str):
+    with open(code_file_path, 'r') as f:
+        code = f.read()
+
+    code = code.replace('\\n', ' ')
+    with open(code_file_path, 'w') as f:
+        f.write(code)
+
 
 joern_parse_cmd_temp = 'joern-parse {code_path} -o {parsed_bin_path} --namespaces std --language c'
 joern_export_cmd_temp = 'joern-export {parsed_bin_path} --repr {repr} --out {out_dir} --format dot'
@@ -80,6 +88,17 @@ def extract_line_num(v_label):
     return int(groups[0])
 
 
+def edge_cartesian_product(mapped_head, mapped_tail):
+    heads = [mapped_head['main_idx'], *mapped_head['multi_idx']]
+    tails = [mapped_tail['main_idx'], *mapped_tail['multi_idx']]
+    edge_set = set()
+    for head in heads:
+        for tail in tails:
+            edge = f"{tail},{head}"
+            edge_set.add(edge)
+    return edge_set
+
+
 def process_edges(dot_obj):
     """
         Normalize edges and specify edges' type, return a processed edge list.
@@ -91,8 +110,21 @@ def process_edges(dot_obj):
     v_map = {}
     for v_obj in dot_obj['objects']:
         v_idx = int(v_obj['_gvid'])
+        label = v_obj['label']
         line_num = extract_line_num(v_obj['label'])
-        v_map[v_idx] = line_num
+
+        if line_num is None:
+            v_map = line_num
+            continue
+        else:
+            v_map[v_idx] = {'main_idx': line_num, 'multi_idx': []}
+
+        # Count the number of
+        multi_line_count = label.count('\\n')
+        for i in range(multi_line_count):
+            v_map[v_idx]['multi_idx'].append(line_num + i + 1)
+        if multi_line_count > 0:
+            logger.debug(f'found multi-line label: {label}')
 
     # recompute edges using normalized vertices
     control_edges = set()
@@ -104,9 +136,12 @@ def process_edges(dot_obj):
         # drop the edge connecting vertices without matching line number
         if map_tail is None or map_head is None:
             continue
-        edge = f'{map_tail},{map_head}'  # edge format: "[tail],[head]"
+        edge = f"{map_tail['main_idx']},{map_head['main_idx']}"  # edge format: "[tail],[head]"
+
+        # Only for control flow, we consider effect of multi-line span.
         if 'CDG' in e_obj['label']:
-            control_edges.add(edge)
+            cartesian_prod_edges = edge_cartesian_product(map_head, map_tail)
+            control_edges.update(cartesian_prod_edges)
         elif 'DDG' in e_obj['label']:
             data_edges.add(edge)
         else:
@@ -238,3 +273,47 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+    # dot_json_path = '/root/data/test_temp/test1_dot.json'
+    # code_file_path = '/root/data/test_temp/test1.c'
+    # dump_json_path = '/root/data/test_temp/test1_packed.json'
+    # main_temp_bin_path = '/root/data/test_temp/main_temp.bin'
+    # main_temp_dot_dir = '/root/data/test_temp/dot'
+    #
+    # preprocess_code_file(code_file_path)
+    #
+    # # joern parse, bin as output
+    # joern_parse_cmd = joern_parse_cmd_temp.format(
+    #     code_path=code_file_path,
+    #     parsed_bin_path=main_temp_bin_path
+    # )
+    # subprocess.run(joern_parse_cmd, shell=True, check=True)
+    #
+    # # joern export, dot files as output
+    # joern_export_cmd = joern_export_cmd_temp.format(
+    #     parsed_bin_path=main_temp_bin_path,
+    #     repr='pdg',
+    #     out_dir=main_temp_dot_dir
+    # )
+    # subprocess.run(joern_export_cmd, shell=True, check=True)
+    #
+    # # check if target output dot file exists
+    # if not os.path.exists(os.path.join(main_temp_dot_dir, target_dot_filename)):
+    #     logger.warning(f'File ({code_file_path} parse failed, no target dot file ({target_dot_filename}))')
+    #
+    # # convert dot file to json format
+    # dot2json_cmd = dot2json_cmd_temp.format(
+    #     in_dot_path=os.path.join(main_temp_dot_dir, target_dot_filename),
+    #     out_json_path=os.path.join(main_temp_dot_dir, 'graph.json')
+    # )
+    # subprocess.run(dot2json_cmd, shell=True, check=True)
+    #
+    # # process PDG dot file, pack needed data for code analysis as a unified file
+    # process_dot_json(
+    #     dot_json_path=os.path.join(main_temp_dot_dir, 'graph.json'),
+    #     code_file_path=code_file_path,
+    #     dump_json_path=dump_json_path
+    # )
+
+    # packed_data = pack_file_data(code_file_path, edges)
+    # dump_json(packed_data, dump_json_path)
