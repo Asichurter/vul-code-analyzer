@@ -17,7 +17,7 @@ local additional_special_tokens = [mlm_mask_token];
         version: 7,
         decs: {
             main: "mlm (neg_sampling=5, fix logits bug) + separated edge prediction",
-            vol: "29~69",
+            vol: "train: 30~66, val: 67~69",
             training: "20 epoch, lr=5e-4, poly_decay, warmup=1000",
         },
     },
@@ -46,7 +46,6 @@ local additional_special_tokens = [mlm_mask_token];
               additional_special_tokens: additional_special_tokens
             }
         },
-        volume_range: [29, 69],
         pdg_max_vertice: max_lines,
         max_lines: max_lines,
         code_max_tokens: code_max_tokens,
@@ -59,7 +58,14 @@ local additional_special_tokens = [mlm_mask_token];
         unified_label: false,
     },
 
-    train_data_path: data_vol_base_path,
+    train_data_path: {
+        data_base_path: data_vol_base_path,
+        volume_range: [30,66]
+    },
+    validation_data_path: {
+        data_base_path: data_vol_base_path,
+        volume_range: [67,69]
+    },
 
     model: {
         type: "code_line_pdg_analyzer",
@@ -73,6 +79,8 @@ local additional_special_tokens = [mlm_mask_token];
                 tokenizer_type: tokenizer_type,
                 token_id_key: "token_ids",
                 mask_token: mlm_mask_token,
+                dropout: 0.1,
+                activation: "relu",
                 sample_ratio: 0.15,
                 mask_ratio: 0.8,
                 replace_ratio: 0.1,
@@ -128,6 +136,11 @@ local additional_special_tokens = [mlm_mask_token];
     batch_size: 32,
     shuffle: true,
   },
+  validation_data_loader: {
+    batch_size: 32,
+    shuffle: true,
+  },
+
   trainer: {
     num_epochs: 20,
     patience: null,

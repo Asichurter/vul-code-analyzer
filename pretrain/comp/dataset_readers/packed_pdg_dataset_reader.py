@@ -17,7 +17,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
     def __init__(self,
                  code_tokenizer: Tokenizer,
                  code_indexer: TokenIndexer,
-                 volume_range: Tuple[int,int],  # closed interval: [a,b]
+                 # volume_range: Tuple[int,int],  # closed interval: [a,b]
                  pdg_max_vertice: int,  # For line-level approach, this should be equal to "max_lines"
                  max_lines: int,
                  code_max_tokens: int,
@@ -30,7 +30,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
         self.code_token_indexers = {"code_tokens": code_indexer}  # or {"tokens": SingleIdTokenIndexer()}
-        self.volume_range = volume_range
+        # self.volume_range = volume_range
         self.pdg_max_vertice = pdg_max_vertice
         self.max_lines = max_lines
         self.code_max_tokens = code_max_tokens
@@ -185,10 +185,12 @@ class PackedLinePDGDatasetReader(DatasetReader):
         return True, Instance(fields)
 
 
-    def _read(self, data_base_path: str) -> Iterable[Instance]:
+    def _read(self, dataset_config: Dict) -> Iterable[Instance]:
         from utils import GlobalLogger as logger
+        data_base_path = dataset_config['data_base_path']
+        volume_range = dataset_config['volume_range']   # close interval
 
-        for vol in range(self.volume_range[0], self.volume_range[1]+1):
+        for vol in range(volume_range[0], volume_range[1]+1):
             vol_path = os.path.join(data_base_path, f'vol{vol}')
             logger.info('PackedLinePDGDatasetReader.read', f'Reading Vol. {vol}')
             for item in tqdm(os.listdir(vol_path)):
