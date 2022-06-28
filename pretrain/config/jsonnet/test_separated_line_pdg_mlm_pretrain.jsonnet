@@ -14,10 +14,11 @@ local additional_special_tokens = [mlm_mask_token];
 
 {
     extra: {
-        version: 4,
+        version: 7,
         decs: {
-            main: "mlm (neg_sampling=5) + separated edge prediction",
-            vol: "29 ~ 69"
+            main: "mlm (neg_sampling=5, fix logits bug) + separated edge prediction",
+            vol: "29~69",
+            training: "20 epoch, lr=5e-4, poly_decay, warmup=1000",
         },
     },
 
@@ -45,7 +46,7 @@ local additional_special_tokens = [mlm_mask_token];
               additional_special_tokens: additional_special_tokens
             }
         },
-        volume_range: [29,69],
+        volume_range: [29, 69],
         pdg_max_vertice: max_lines,
         max_lines: max_lines,
         code_max_tokens: code_max_tokens,
@@ -128,13 +129,19 @@ local additional_special_tokens = [mlm_mask_token];
     shuffle: true,
   },
   trainer: {
-    num_epochs: 25,
+    num_epochs: 20,
     patience: null,
-    cuda_device: 3,
+    cuda_device: 1,
     validation_metric: "-loss",
     optimizer: {
       type: "adam",
-      lr: 1e-5
+      lr: 5e-4
+    },
+    learning_rate_scheduler: {
+        type: "polynomial_decay",
+        power: 2,
+        warmup_steps: 1000,
+        end_learning_rate: 1e-10
     },
     num_gradient_accumulation_steps: 2,
     callbacks: [

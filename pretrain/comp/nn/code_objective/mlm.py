@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 from allennlp.data import Vocabulary, TextFieldTensors
 
+from common.nn.activation_builder import build_activation
 from pretrain.comp.nn.code_objective.code_objective import CodeObjective
 from pretrain.comp.nn.utils import stat_true_count_in_batch_dim, sample_2D_mask_by_count_in_batch_dim
 
@@ -19,6 +20,8 @@ class MlmObjective(CodeObjective):
                  token_id_key: str = 'token_ids',
                  tokenizer_type: str = 'codebert',
                  mask_token: str = '<MLM>',
+                 dropout: float = 0.1,
+                 activation: str = 'relu',
                  loss_coeff: float = 1.,
                  sample_ratio: float = 0.15,    # how many tokens to sample
                  mask_ratio: float = 0.8,       # how many sampled tokens to mask
@@ -33,9 +36,13 @@ class MlmObjective(CodeObjective):
                          **kwargs)
         self.vocab = vocab
         self.code_namespace = code_namespace
+        self.dense = torch.nn.Linear(token_dimension, token_dimension)
         self.output_weight = torch.nn.Linear(token_dimension,
                                              vocab.get_vocab_size(code_namespace),
                                              bias=False)
+
+        self.dropout = dropout
+        self.activation = build_activation(activation)
         self.sample_ratio = sample_ratio
         self.mask_ratio = mask_ratio
         self.replace_ratio = replace_ratio
@@ -140,6 +147,8 @@ class MlmObjective(CodeObjective):
             mask[first_dim_idx, label] = True
 
             # Then, for each row (predicted word), we uniformly sample K negative word.
+            # We use uniform negative sampling in default, but it can be improved using a
+            # frequency-related distribution instead.
             # [NOTE]: Since the multinomial sampling does not exclude the index of label,
             #         the actual sampled negative samples may be K-1 sometimes!
             neg_sampled_indexes = torch.multinomial(torch.ones_like(pred_logits, device=device), self.negative_sampling_k, replacement=False)
@@ -156,8 +165,11 @@ class MlmObjective(CodeObjective):
             # Finally, we set the logits of masked positions to be -INF.
             pred_logits = pred_logits.masked_fill(~mask, float('-inf'))
 
-        pred_probs = pred_logits.softmax(dim=-1)
-        loss  = F.cross_entropy(pred_probs, label)
+        # [BugFix 6.28]
+        # F.cross_entropy will call softmax itself to compute probability distribution,
+        # thus it is of no need to call it again to scale logits smaller.
+        # pred_probs = pred_logits.softmax(dim=-1)
+        loss  = F.cross_entropy(pred_logits, label)
         return loss
 
 
@@ -173,9 +185,13 @@ class MlmObjective(CodeObjective):
         code_embed_outputs = code_embed_func(code)
         code_embeddings = code_embed_outputs['outputs']
 
+        # Forward MLM inner layers.
         sampled_idxes = sampled_mask.nonzero()
-        sampled_code_embeddings = code_embeddings[sampled_idxes[:,0], sampled_idxes[:,1], :]
-        sampled_code_outputs = self.output_weight(sampled_code_embeddings) # .softmax(dim=-1)
+        sampled_code_embeddings = code_embeddings[sampled_idxes[:, 0], sampled_idxes[:, 1], :]
+        sampled_code_embeddings = F.dropout(sampled_code_embeddings, self.dropout)
+        sampled_code_embeddings = self.activation(self.dense(sampled_code_embeddings))
+        sampled_code_embeddings = F.dropout(sampled_code_embeddings, self.dropout)
+        sampled_code_outputs = self.output_weight(sampled_code_embeddings)
 
         mlm_loss = self.mlm_loss(sampled_code_outputs, original_sampled_token_ids)
         output_dict =  {'loss': mlm_loss}
