@@ -22,6 +22,7 @@ def main():
         new_file_path = os.path.join(new_vol_data_path, vol_file)
         if not os.path.exists(new_file_path):
             mylogger.warning('packed_diff', f'File not in new vol: {new_file_path}')
+            continue
 
         old_packed_obj = load_json(old_file_path)
         new_packed_obj = load_json(new_file_path)

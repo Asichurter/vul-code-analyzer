@@ -4,7 +4,7 @@ local code_embed_dim = 768;
 local code_encode_dim = 768;
 local node_dim = 64;
 
-local code_max_tokens = 256;
+local code_max_tokens = 384;
 local max_lines = 50;
 local code_namespace = "code_tokens";
 
@@ -14,9 +14,10 @@ local additional_special_tokens = [mlm_mask_token];
 
 {
     extra: {
-        version: 12,
+        version: 13,
         decs: {
-            main: "mlm (no neg_sampling, mlm_coeff=1, fix logits bug) + separated edge prediction",
+            main: "mlm (no neg_sampling, mlm_coeff=1) + separated edge prediction",
+            data: "max_len=384",
             vol: "train: 30~66, val: 67~69",
             training: "20 epoch, lr=1e-4, poly_decay, min_lr=1e-6, no warmup",
         },
@@ -145,7 +146,7 @@ local additional_special_tokens = [mlm_mask_token];
   trainer: {
     num_epochs: 20,
     patience: null,
-    cuda_device: 1,
+    cuda_device: 3,
     validation_metric: "-loss",
     optimizer: {
       type: "adam",
