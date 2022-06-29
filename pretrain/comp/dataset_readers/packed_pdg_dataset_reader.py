@@ -21,6 +21,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
                  pdg_max_vertice: int,  # For line-level approach, this should be equal to "max_lines"
                  max_lines: int,
                  code_max_tokens: int,
+                 code_namespace: str = "code_tokens",
                  code_cleaner: CodeCleaner = TrivialCodeCleaner(),
                  tokenized_newline_char: str = 'Ċ',  # \n after tokenization by CodeBERT
                  special_tokenizer_token_handler_type: str = 'codebert',
@@ -29,7 +30,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
-        self.code_token_indexers = {"code_tokens": code_indexer}  # or {"tokens": SingleIdTokenIndexer()}
+        self.code_token_indexers = {code_namespace: code_indexer}  # or {"tokens": SingleIdTokenIndexer()}
         # self.volume_range = volume_range
         self.pdg_max_vertice = pdg_max_vertice
         self.max_lines = max_lines
