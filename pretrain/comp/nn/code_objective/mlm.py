@@ -170,6 +170,7 @@ class MlmObjective(CodeObjective):
         # thus it is of no need to call it again to scale logits smaller.
         # pred_probs = pred_logits.softmax(dim=-1)
         loss  = F.cross_entropy(pred_logits, label)
+        loss = loss * self.loss_coeff
         return loss
 
 
