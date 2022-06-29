@@ -119,7 +119,7 @@ def process_edges(dot_obj):
         else:
             v_map[v_idx] = {'main_idx': line_num, 'multi_idx': []}
 
-        # Count the number of
+        # Count the multi-line span.
         multi_line_count = label.count('\\n')
         for i in range(multi_line_count):
             v_map[v_idx]['multi_idx'].append(line_num + i + 1)
