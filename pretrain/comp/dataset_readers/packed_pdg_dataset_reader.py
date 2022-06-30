@@ -8,7 +8,7 @@ from allennlp.data import Tokenizer, TokenIndexer, Instance, Token
 from allennlp.data.dataset_readers import DatasetReader
 from allennlp.data.fields import TextField, TensorField
 
-from common.code_cleaner import CodeCleaner, TrivialCodeCleaner
+from common.modules.code_cleaner import CodeCleaner, TrivialCodeCleaner
 from utils.file import read_dumped
 
 

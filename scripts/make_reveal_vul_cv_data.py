@@ -7,11 +7,13 @@ from utils.file import load_json, dump_json
 k_fold = 5
 vul_data_path = '/data1/zhijietang/vul_data/datasets/reveal/vulnerables.json'
 non_vul_data_path = '/data1/zhijietang/vul_data/datasets/reveal/non-vulnerables.json'
-train_ratio = 0.8
+train_ratio = 0.7
 validate_ratio = 0.1
-test_ratio = 0.1
+test_ratio = 0.2
 
-dump_base_path = '/data1/zhijietang/vul_data/datasets/reveal/cv'
+dump_base_path = '/data1/zhijietang/vul_data/datasets/reveal/random_split'
+
+# todo: This is not split of cross validation, but just random split.
 
 def random_split(data_list):
     """
@@ -47,7 +49,7 @@ def main():
         validate = vul_val + non_vul_val
         test = vul_test + non_vul_test
 
-        cv_base_path = os.path.join(dump_base_path, f'cv_{ki}')
+        cv_base_path = os.path.join(dump_base_path, f'split_{ki}')
         os.mkdir(cv_base_path)
         dump_json(train, os.path.join(cv_base_path, 'train.json'))
         dump_json(validate, os.path.join(cv_base_path, 'validate.json'))
