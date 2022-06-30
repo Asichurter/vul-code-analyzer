@@ -1,5 +1,9 @@
 import json
 import pickle
+from typing import Dict
+import os
+from datetime import datetime
+
 
 def load_json(path):
     with open(path, 'r', encoding='UTF-8') as f:
@@ -29,3 +33,22 @@ def read_dumped(file_path, dump_format=None):
         return load_json(file_path)
     else:
         raise ValueError(f'[read_dumped] Unsupported dump format: {dump_format}')
+
+
+def save_evaluate_results(results: Dict,
+                          other_configs: Dict,
+                          save_json_path: str):
+    results.update(other_configs)
+
+    if os.path.exists(save_json_path):
+        result_list = load_json(save_json_path)
+    else:
+        result_list = []
+
+    # add time field
+    results.update({
+        'time': datetime.now().strftime('%Y-%m-%d, %H:%M:%S')
+    })
+
+    result_list.append(results)
+    dump_json(result_list, save_json_path)
