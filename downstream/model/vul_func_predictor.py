@@ -11,6 +11,8 @@ from allennlp.training.metrics import Metric
 from common.nn.classifier import Classifier
 from common.nn.loss_func import LossFunc
 from utils import GlobalLogger as mylogger
+from utils.allennlp_utils.metric_update import update_metric
+
 
 @Model.register('vul_func_predictor')
 class VulFuncPredictor(Model):
@@ -22,8 +24,8 @@ class VulFuncPredictor(Model):
         code_feature_squeezer: Seq2VecEncoder,
         loss_func: LossFunc,
         classifier: Classifier,
-        pretrained_state_dict_path: Optional[str],
-        prefix_remap: Dict[str, str] = {},  # Note this map is "mapping name of model parameter to match state dict"
+        pretrained_state_dict_path: Optional[str] = None,
+        load_prefix_remap: Dict[str, str] = {},  # Note this map is "mapping name of model parameter to match state dict"
         metric: Optional[Metric] = None,
         **kwargs
     ):
@@ -37,8 +39,11 @@ class VulFuncPredictor(Model):
 
         # Load partial remapped parameters from pre-trained
         if pretrained_state_dict_path is not None:
-            state_dict = torch.load(pretrained_state_dict_path)
-            self.partial_load_state_dict(state_dict, prefix_remap)
+            # Note we map the loaded weights to cpu to align with other parameters in the model,
+            # and trainer will help us to move them to GPU device together before training.
+            state_dict = torch.load(pretrained_state_dict_path, map_location='cpu')
+            self.partial_load_state_dict(state_dict, load_prefix_remap)
+
 
     def partial_load_state_dict(self,
                                 state_dict: Dict[str, torch.Tensor],
@@ -47,6 +52,7 @@ class VulFuncPredictor(Model):
         Load parameters from a state dict according to the given mapping.
         Note we try to remap the name of parameters of this model to match the
         keys of the given state dict in a prefix-matching manner.
+
         Also to note, unmapped parameters will be ignored, thus even the key is identical,
         it is also necessary to place this item in the map.
         """
@@ -94,13 +100,15 @@ class VulFuncPredictor(Model):
         code_features = encoded_code_outputs['outputs']
 
         pred_logits, pred_labels = self.classifier(code_features)
+        label = label.squeeze(-1)
         loss = self.loss_func(pred_logits, label)
 
         if self.metric is not None:
-            self.metric(pred_labels, label)
+            update_metric(self.metric, pred_labels, pred_logits, label)
 
         return {
             'logits': pred_logits,
+            'pred': pred_labels,
             'loss': loss
         }
 
