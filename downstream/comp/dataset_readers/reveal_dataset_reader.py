@@ -1,14 +1,17 @@
 import torch
 from typing import Iterable, Dict
+from tqdm import tqdm
 
 from allennlp.data import Instance, Tokenizer, TokenIndexer
 from allennlp.data.dataset_readers import DatasetReader
 from allennlp.data.fields import TextField, TensorField
 
-from common.code_cleaner import CodeCleaner, TrivialCodeCleaner
+from common.modules.code_cleaner import CodeCleaner, TrivialCodeCleaner
 from utils.file import load_json
 
-class RevealDatasetReader(DatasetReader):
+
+@DatasetReader.register('reveal_base')
+class RevealBaseDatasetReader(DatasetReader):
     def __init__(self,
                  code_tokenizer: Tokenizer,
                  code_indexer: TokenIndexer,
@@ -26,7 +29,7 @@ class RevealDatasetReader(DatasetReader):
 
     def text_to_instance(self, data_item: Dict) -> Instance:
         code = data_item['code']
-        label = data_item['label']
+        label = data_item['vulnerable']
 
         code = self.code_cleaner.clean_code(code)
         tokenized_code = self.code_tokenizer.tokenize(code)
@@ -40,5 +43,5 @@ class RevealDatasetReader(DatasetReader):
 
     def _read(self, file_path) -> Iterable[Instance]:
         data = load_json(file_path)
-        for item in data:
+        for item in tqdm(data):
             yield self.text_to_instance(item)
