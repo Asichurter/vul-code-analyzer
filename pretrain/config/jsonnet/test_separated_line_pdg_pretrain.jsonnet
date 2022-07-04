@@ -127,7 +127,7 @@ local additional_special_tokens = [mlm_mask_token];
   trainer: {
     num_epochs: 20,
     patience: null,
-    cuda_device: 1,
+    cuda_device: 2,
     validation_metric: "-loss",
     optimizer: {
       type: "adam",

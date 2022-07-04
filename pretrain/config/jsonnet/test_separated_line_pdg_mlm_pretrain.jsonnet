@@ -60,7 +60,7 @@ local additional_special_tokens = [mlm_mask_token];
 
     train_data_path: {
         data_base_path: data_vol_base_path,
-        volume_range: [30,66]
+        volume_range: [29,66]
     },
     validation_data_path: {
         data_base_path: data_vol_base_path,
@@ -145,7 +145,7 @@ local additional_special_tokens = [mlm_mask_token];
   trainer: {
     num_epochs: 20,
     patience: null,
-    cuda_device: 2,
+    cuda_device: 3,
     validation_metric: "-loss",
     optimizer: {
       type: "adam",

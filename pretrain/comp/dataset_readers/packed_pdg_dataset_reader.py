@@ -27,6 +27,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
                  special_tokenizer_token_handler_type: str = 'codebert',
                  only_keep_complete_lines: bool = True,
                  unified_label: bool = True,
+                 from_raw_data: bool = True,
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
@@ -198,6 +199,48 @@ class PackedLinePDGDatasetReader(DatasetReader):
                 try:
                     pdg_data_item = read_dumped(os.path.join(vol_path, item))
                     ok, instance = self.text_to_instance(pdg_data_item)
+                    if ok:
+                        self.actual_read_samples += 1
+                        yield instance
+                except Exception as e:
+                    logger.error('read', f'file path: {os.path.join(vol_path, item)}, error: {str(e)}')
+
+
+    def text_to_dict(self, packed_pdg: Dict) -> Tuple[bool, Dict]:
+        code = packed_pdg['code']
+        edges = packed_pdg['edges']
+        original_total_line = packed_pdg['total_line']
+
+        code = self.code_cleaner.clean_code(code)
+        tokenized_code = self.code_tokenizer.tokenize(code)
+        tokenized_code, token_line_idxes, line_count = self.truncate_and_make_line_index(tokenized_code)
+        edge_matrix = self.make_edge_matrix(edges, line_count)
+        # Ignore single-line code samples.
+        if line_count == 1:
+            return False, {}
+
+        self._check_data_correctness(code, tokenized_code, token_line_idxes, edges)
+        data_dict = {
+            'code': tokenized_code,
+            'line_idxes': token_line_idxes,
+            'edges': edge_matrix,
+            'vertice_num': line_count
+        }
+        return True, data_dict
+
+    def read_as_json(self, dataset_config: Dict) -> Iterable[Dict]:
+        from utils import GlobalLogger as logger
+        data_base_path = dataset_config['data_base_path']
+        volume_range = dataset_config['volume_range']   # close interval
+
+        for vol in range(volume_range[0], volume_range[1]+1):
+            vol_path = os.path.join(data_base_path, f'vol{vol}')
+            logger.info('PackedLinePDGDatasetReader.read_as_json', f'Reading Vol. {vol}')
+            for item in tqdm(os.listdir(vol_path)):
+                try:
+                    # logger.info('read_as_json', os.path.join(vol_path, item))
+                    pdg_data_item = read_dumped(os.path.join(vol_path, item))
+                    ok, instance = self.text_to_dict(pdg_data_item)
                     if ok:
                         self.actual_read_samples += 1
                         yield instance
