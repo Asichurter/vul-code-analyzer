@@ -9,3 +9,4 @@ from .comp.metric.separated_pretrain_metric import SeparatedMaskAccuracy
 from .comp.nn.code_objective.mlm import MlmObjective
 
 from .model.pdg_line_analyzer import CodeLinePDGAnalyzer
+from .model.code_objective_trainer import CodeObjectiveTrainer
