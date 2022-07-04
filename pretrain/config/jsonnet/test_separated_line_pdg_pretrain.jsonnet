@@ -9,14 +9,16 @@ local max_lines = 50;
 local code_namespace = "code_tokens";
 
 local tokenizer_type = "codebert";
-local additional_special_tokens = [];
+local mlm_mask_token = "<MLM>";
+local additional_special_tokens = [mlm_mask_token];
 
 {
     extra: {
-        version: 2,
+        version: 14,
         decs: {
             main: "separated edge prediction",
-            vol: "29 ~ 69"
+            vol: "train: 30~66, val: 67~69",
+            training: "20 epoch, lr=1e-4, poly_decay, min_lr=1e-6, no warmup",
         },
     },
 
@@ -44,7 +46,6 @@ local additional_special_tokens = [];
               additional_special_tokens: additional_special_tokens
             }
         },
-        volume_range: [29,69],
         pdg_max_vertice: max_lines,
         max_lines: max_lines,
         code_max_tokens: code_max_tokens,
@@ -57,7 +58,14 @@ local additional_special_tokens = [];
         unified_label: false,
     },
 
-    train_data_path: data_vol_base_path,
+    train_data_path: {
+        data_base_path: data_vol_base_path,
+        volume_range: [30,66]
+    },
+    validation_data_path: {
+        data_base_path: data_vol_base_path,
+        volume_range: [67,69]
+    },
 
     model: {
         type: "code_line_pdg_analyzer",
@@ -111,14 +119,25 @@ local additional_special_tokens = [];
     batch_size: 32,
     shuffle: true,
   },
+  validation_data_loader: {
+    batch_size: 32,
+    shuffle: true,
+  },
+
   trainer: {
-    num_epochs: 25,
+    num_epochs: 20,
     patience: null,
     cuda_device: 1,
     validation_metric: "-loss",
     optimizer: {
       type: "adam",
-      lr: 1e-5
+      lr: 1e-4
+    },
+    learning_rate_scheduler: {
+        type: "polynomial_decay",
+        power: 2,
+        warmup_steps: 0,
+        end_learning_rate: 1e-6
     },
     num_gradient_accumulation_steps: 2,
     callbacks: [

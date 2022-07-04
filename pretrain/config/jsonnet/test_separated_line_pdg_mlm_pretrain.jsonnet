@@ -14,9 +14,9 @@ local additional_special_tokens = [mlm_mask_token];
 
 {
     extra: {
-        version: 12,
+        version: 13,
         decs: {
-            main: "mlm (no neg_sampling, mlm_coeff=1, fix logits bug) + separated edge prediction",
+            main: "mlm (neg_sampling_k=5, mlm_coeff=1, fix logits bug) + separated edge prediction",
             vol: "train: 30~66, val: 67~69",
             training: "20 epoch, lr=1e-4, poly_decay, min_lr=1e-6, no warmup",
         },
@@ -85,7 +85,7 @@ local additional_special_tokens = [mlm_mask_token];
                 sample_ratio: 0.15,
                 mask_ratio: 0.8,
                 replace_ratio: 0.1,
-                negative_sampling_k: null,
+                negative_sampling_k: 5,
             }
         ],
 
@@ -145,7 +145,7 @@ local additional_special_tokens = [mlm_mask_token];
   trainer: {
     num_epochs: 20,
     patience: null,
-    cuda_device: 1,
+    cuda_device: 2,
     validation_metric: "-loss",
     optimizer: {
       type: "adam",
