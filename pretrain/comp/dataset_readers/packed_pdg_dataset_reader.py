@@ -43,6 +43,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
         self.special_tokenizer_token_handler_type = special_tokenizer_token_handler_type
         self.only_keep_complete_lines = only_keep_complete_lines
         self.unified_label = unified_label
+        self.from_raw_data = from_raw_data
 
         self.actual_read_samples = 0
 
@@ -193,18 +194,28 @@ class PackedLinePDGDatasetReader(DatasetReader):
         volume_range = dataset_config['volume_range']   # close interval
 
         for vol in range(volume_range[0], volume_range[1]+1):
-            vol_path = os.path.join(data_base_path, f'vol{vol}')
             logger.info('PackedLinePDGDatasetReader.read', f'Reading Vol. {vol}')
-            for item in tqdm(os.listdir(vol_path)):
-                try:
-                    pdg_data_item = read_dumped(os.path.join(vol_path, item))
-                    ok, instance = self.text_to_instance(pdg_data_item)
-                    if ok:
-                        self.actual_read_samples += 1
-                        yield instance
-                except Exception as e:
-                    logger.error('read', f'file path: {os.path.join(vol_path, item)}, error: {str(e)}')
 
+            # From raw data, use "self.text_to_instance"
+            if self.from_raw_data:
+                vol_path = os.path.join(data_base_path, f'vol{vol}')
+                for item in tqdm(os.listdir(vol_path)):
+                    try:
+                        pdg_data_item = read_dumped(os.path.join(vol_path, item))
+                        ok, instance = self.text_to_instance(pdg_data_item)
+                        if ok:
+                            self.actual_read_samples += 1
+                            yield instance
+                    except Exception as e:
+                        logger.error('read', f'file path: {os.path.join(vol_path, item)}, error: {str(e)}')
+
+            # From preprocessed packed data pkl, use "self.dict_to_instance"
+            else:
+                vol_path = os.path.join(data_base_path, f'packed_vol_{vol}.pkl')
+                packed_vol_data_items = read_dumped(vol_path)
+                for item in tqdm(packed_vol_data_items):
+                    instance = self.dict_to_instance(item)
+                    yield instance
 
     def text_to_dict(self, packed_pdg: Dict) -> Tuple[bool, Dict]:
         code = packed_pdg['code']
@@ -228,6 +239,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
         }
         return True, data_dict
 
+
     def read_as_json(self, dataset_config: Dict) -> Iterable[Dict]:
         from utils import GlobalLogger as logger
         data_base_path = dataset_config['data_base_path']
@@ -246,3 +258,17 @@ class PackedLinePDGDatasetReader(DatasetReader):
                         yield instance
                 except Exception as e:
                     logger.error('read', f'file path: {os.path.join(vol_path, item)}, error: {str(e)}')
+
+
+    def dict_to_instance(self, packed_data: Dict) -> Instance:
+        tokenized_code = packed_data['code']
+        token_line_idxes = packed_data['line_idxes']
+        edge_matrix = packed_data['edges']
+        line_count = packed_data['vertice_num']
+        fields = {
+            'code': TextField(tokenized_code, self.code_token_indexers),
+            'line_idxes': TensorField(token_line_idxes),
+            'edges': TensorField(edge_matrix),
+            'vertice_num': TensorField(torch.Tensor([line_count])), # num. of line is vertice num.
+        }
+        return Instance(fields)
