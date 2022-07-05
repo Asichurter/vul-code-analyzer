@@ -24,8 +24,8 @@ class VulFuncPredictor(Model):
         code_feature_squeezer: Seq2VecEncoder,
         loss_func: LossFunc,
         classifier: Classifier,
-        pretrained_state_dict_path: Optional[str] = None,
-        load_prefix_remap: Dict[str, str] = {},  # Note this map is "mapping name of model parameter to match state dict"
+        # pretrained_state_dict_path: Optional[str] = None,
+        # load_prefix_remap: Dict[str, str] = {},
         metric: Optional[Metric] = None,
         **kwargs
     ):
@@ -37,43 +37,12 @@ class VulFuncPredictor(Model):
         self.classifier = classifier
         self.metric = metric
 
-        # Load partial remapped parameters from pre-trained
-        if pretrained_state_dict_path is not None:
-            # Note we map the loaded weights to cpu to align with other parameters in the model,
-            # and trainer will help us to move them to GPU device together before training.
-            state_dict = torch.load(pretrained_state_dict_path, map_location='cpu')
-            self.partial_load_state_dict(state_dict, load_prefix_remap)
-
-
-    def partial_load_state_dict(self,
-                                state_dict: Dict[str, torch.Tensor],
-                                prefix_remap: Dict[str, str]):
-        """
-        Load parameters from a state dict according to the given mapping.
-        Note we try to remap the name of parameters of this model to match the
-        keys of the given state dict in a prefix-matching manner.
-
-        Also to note, unmapped parameters will be ignored, thus even the key is identical,
-        it is also necessary to place this item in the map.
-        """
-        partial_state_dict = {}
-        for name, par in self.named_parameters():
-            load_name = None
-            for prefix in prefix_remap:
-                if name.startswith(prefix):
-                    load_prefix = prefix_remap[prefix]
-                    load_name = load_prefix + name[len(prefix):]
-                    # Always match first
-                    break
-            # Only load mapped parameters
-            if load_name is None:
-                continue
-            if name in state_dict:
-                partial_state_dict[name] = state_dict[load_name]
-
-        load_res = self.load_state_dict(partial_state_dict, strict=False)
-        mylogger.info('partial_load_state_dict',
-                      f'State dict loading result: {load_res}')
+        # # Load partial remapped parameters from pre-trained
+        # if pretrained_state_dict_path is not None:
+        #     # Note we map the loaded weights to cpu to align with other parameters in the model,
+        #     # and trainer will help us to move them to GPU device together before training.
+        #     state_dict = torch.load(pretrained_state_dict_path, map_location='cpu')
+        #     self.partial_load_state_dict(state_dict, load_prefix_remap)
 
 
     def embed_encode_code(self, code: TextFieldTensors):

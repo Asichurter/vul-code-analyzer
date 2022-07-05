@@ -5,6 +5,7 @@ import math
 
 import torch
 from allennlp.data import TensorDict
+from allennlp.models import Model
 from allennlp.training import TrainerCallback
 from allennlp.models.archival import archive_model
 from utils.stat import stat_model_param_number
@@ -161,3 +162,25 @@ class DecaySamplingCallback(TrainerCallback):
         trainer.model.set_decay_sampling_p(p)
 
         mylogger.debug('DecaySamplingCallback', f'Epoch={epoch}, p = {p}')
+
+from utils.allennlp_utils.load_utils import partial_load_state_dict
+
+@TrainerCallback.register('partial_load_state_dict')
+class PartialLoadStateDictCallback(TrainerCallback):
+    def __init__(self,
+                 load_state_dict_path: str,
+                 load_prefix_remap: Dict = {},  # Note this map is "mapping name of model parameter to match state dict"
+                 serialization_dir=None):
+        super().__init__(serialization_dir)
+        self.load_state_dict_path = load_state_dict_path
+        self.load_prefix_remap = load_prefix_remap
+
+    def on_start(self,
+                 trainer: "GradientDescentTrainer",
+                 is_primary: bool = True,
+                 **kwargs) -> None:
+        model = trainer.model
+        state_dict = torch.load(self.load_state_dict_path, map_location=trainer.cuda_device)
+        partial_load_state_dict(model, state_dict, self.load_prefix_remap)
+
+
