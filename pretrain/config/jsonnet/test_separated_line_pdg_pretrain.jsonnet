@@ -18,7 +18,7 @@ local additional_special_tokens = [mlm_mask_token];
         decs: {
             main: "separated edge prediction",
             vol: "train: 30~66, val: 67~69",
-            training: "20 epoch, lr=1e-4, poly_decay, min_lr=1e-6, no warmup",
+            training: "3 epoch, lr=1e-4, poly_decay, min_lr=1e-6, no warmup",
         },
     },
 
@@ -125,7 +125,7 @@ local additional_special_tokens = [mlm_mask_token];
   },
 
   trainer: {
-    num_epochs: 20,
+    num_epochs: 3,
     patience: null,
     cuda_device: 2,
     validation_metric: "-loss",

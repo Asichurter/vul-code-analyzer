@@ -1,5 +1,5 @@
 local cv_data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/random_split/';
-local load_model_state_dict_path = '/data1/zhijietang/vul_data/run_logs/pretrain/12/best.th';
+local load_model_base_path = '/data1/zhijietang/vul_data/run_logs/pretrain/12/';
 local pretrained_model = 'microsoft/codebert-base';
 local code_embed_dim = 768;
 local code_encode_dim = 768;
@@ -10,24 +10,30 @@ local code_namespace = "code_tokens";
 
 local mlm_mask_token = "<MLM>";
 local additional_special_tokens = [mlm_mask_token];     # Add this special token to avoid embedding size mismatch
-local split_index = 0;
+local split_index = 1;
 
 local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
 
 {
     extra: {
-        version: 1,
+        version: -2,
         decs: {
-            main: "reveal random_split 0 + pretrain Ver.12",
+            main: "reveal random_split 1 + pretrain Ver.12 (no neg_samp, pdg+mlm)",
             sampler: "No balancer",
+            extra: "no vocab config",
         },
     },
 
-    vocabulary: {
-        type: "from_pretrained_transformer",
-        model_name: pretrained_model,
-        namespace: code_namespace
-    },
+//    vocabulary: {
+//        type: "from_pretrained_transformer",
+//        model_name: pretrained_model,
+//        namespace: code_namespace
+//    },
+
+//    vocabulary: {
+//        type: "from_files",
+//        directory: load_model_base_path + "vocabulary"
+//    },
 
     dataset_reader: {
         type: "reveal_base",
@@ -91,10 +97,6 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
             dropouts: [0.3],
             ahead_feature_dropout: 0.3,
         },
-        pretrained_state_dict_path: load_model_state_dict_path,
-        load_prefix_remap: {
-            code_embedder: "code_embedder"
-        },
         metric: {
             type: "f1",
             positive_label: 1,
@@ -114,7 +116,7 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
   trainer: {
     num_epochs: 10,
     patience: null,
-    cuda_device: 0,
+    cuda_device: 2,
     validation_metric: "+f1",
     optimizer: {
       type: "adam",
@@ -137,6 +139,13 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
       {
         type: "save_epoch_model",
         save_epoch_points: []
+      },
+      {
+        type: "partial_load_state_dict",
+        load_state_dict_path: load_model_base_path + "best.th",
+        load_prefix_remap: {
+            code_embedder: "code_embedder"
+        },
       },
     ],
     checkpointer: null,     // checkpointer is set to null to avoid saving model state at each episode

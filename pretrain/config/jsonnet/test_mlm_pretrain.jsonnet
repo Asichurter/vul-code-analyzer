@@ -1,4 +1,5 @@
 local data_vol_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_data/';
+local packed_data_vol_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_vol_data/';
 local pretrained_model = 'microsoft/codebert-base';
 local code_embed_dim = 768;
 local code_encode_dim = 768;
@@ -56,14 +57,15 @@ local additional_special_tokens = [mlm_mask_token];
             type: "space_sub",
         },
         unified_label: false,
+        from_raw_data: false,
     },
 
     train_data_path: {
-        data_base_path: data_vol_base_path,
-        volume_range: [29,66]
+        data_base_path: packed_data_vol_base_path,
+        volume_range: [30,66]
     },
     validation_data_path: {
-        data_base_path: data_vol_base_path,
+        data_base_path: packed_data_vol_base_path,
         volume_range: [67,69]
     },
 
@@ -120,7 +122,7 @@ local additional_special_tokens = [mlm_mask_token];
   trainer: {
     num_epochs: 20,
     patience: null,
-    cuda_device: 3,
+    cuda_device: 2,
     validation_metric: "-loss",
     optimizer: {
       type: "adam",

@@ -1,5 +1,4 @@
 local cv_data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/random_split/';
-local load_model_state_dict_path = '/data1/zhijietang/vul_data/run_logs/pretrain/12/best.th';
 local pretrained_model = 'microsoft/codebert-base';
 local code_embed_dim = 768;
 local code_encode_dim = 768;
@@ -10,15 +9,15 @@ local code_namespace = "code_tokens";
 
 local mlm_mask_token = "<MLM>";
 local additional_special_tokens = [mlm_mask_token];     # Add this special token to avoid embedding size mismatch
-local split_index = 0;
+local split_index = 1;
 
 local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
 
 {
     extra: {
-        version: 0,
+        version: 4,
         decs: {
-            main: "reveal cv_0 + no pre-train",
+            main: "reveal cv_1 + no pre-train",
             sampler: "No balancer",
         },
     },
@@ -91,10 +90,6 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
             dropouts: [0.3],
             ahead_feature_dropout: 0.3,
         },
-//        pretrained_state_dict_path: load_model_state_dict_path,
-//        load_prefix_remap: {
-//            code_embedder: "code_embedder"
-//        },
         metric: {
             type: "f1",
             positive_label: 1,
@@ -114,7 +109,7 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
   trainer: {
     num_epochs: 10,
     patience: null,
-    cuda_device: 1,
+    cuda_device: 0,
     validation_metric: "+f1",
     optimizer: {
       type: "adam",
@@ -132,7 +127,7 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
       { type: "model_param_stat" },
       {
         type: "save_jsonnet_config",
-        file_src: 'config/jsonnet/ds_reveal_vul_predict.jsonnet',
+        file_src: 'config/jsonnet/ds_reveal_vul_predict_no_pretrain.jsonnet',
       },
       {
         type: "save_epoch_model",
