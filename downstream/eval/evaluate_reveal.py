@@ -1,20 +1,19 @@
 import sys
 from pprint import pprint
 from typing import Tuple, List
-
-from allennlp.data import Vocabulary
 from tqdm import tqdm
 
 import torch
 from allennlp.common import Params
+from allennlp.data import Vocabulary
 from allennlp.data.data_loaders import MultiProcessDataLoader
 from allennlp.models.model import Model
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
-from utils import GlobalLogger as mylogger
 
-sys.path.append('/data1/zhijietang/projects/cc-repre-learning')
+sys.path.extend(['/data1/zhijietang/projects/vul-code-analyzer'])
 
 from downstream import *
+from utils import GlobalLogger as mylogger
 from utils.allennlp_utils.build_utils import build_dataset_reader_from_config
 from utils.file import save_evaluate_results
 from utils.cmd_args import read_reveal_eval_args
@@ -64,6 +63,13 @@ if bared_model:
     model = Model.from_params(model_params, vocab=vocab)
 else:
     model = Model.from_archive(model_path)
+
+# from utils.allennlp_utils.load_utils import partial_load_state_dict
+#
+# mylogger.info('main', 'Partial loading parameters from pretrain/12...')
+# state_dict = torch.load('/data1/zhijietang/vul_data/run_logs/pretrain/12/best.th', 'cpu')
+# partial_load_state_dict(model, state_dict,
+#                         prefix_remap={'code_embedder': 'code_embedder'})
 
 if cuda_device != -1:
     model = model.cuda(cuda_device)
