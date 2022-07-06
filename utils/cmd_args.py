@@ -13,3 +13,10 @@ def read_reveal_eval_args():
     parser.add_argument('-data_file_name', type=str, default='test.json')
     parser.add_argument('-cuda', type=int)
     return parser.parse_args()
+
+def read_aggre_eval_results_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-versions', type=str)
+    parser.add_argument('-run_log_dir', type=str)
+    parser.add_argument('-title', type=str)
+    return parser.parse_args()
