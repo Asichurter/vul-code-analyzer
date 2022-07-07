@@ -33,7 +33,7 @@ class UnifiedFullLossSampler(LossSampler):
         assert predicted_matrix.size(-1) == 4, "Last dimension of predicted edge matrix must be 4"
 
         # Manually operating "masked_mean"
-        loss_mask = (edge_matrix != -1).int()
+        loss_mask = (edge_matrix != -1).bool()
         return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, loss_mask), \
                loss_mask
 
@@ -44,8 +44,11 @@ class UnifiedBalancedLossSampler(LossSampler):
     This sampler balances edged pairs and non-edged pairs by sampling partial non-edged pairs
     from all the empty positions to make them have the same size.
     """
-    def __init__(self, loss_func: LossFunc, **kwargs):
+    def __init__(self, loss_func: LossFunc,
+                 be_full_when_test: bool = False,
+                 **kwargs):
         super().__init__(loss_func, **kwargs)
+        self.be_full_when_test = be_full_when_test
 
     def get_loss(self,
                  edge_matrix: torch.Tensor,
@@ -59,21 +62,26 @@ class UnifiedBalancedLossSampler(LossSampler):
         assert edge_matrix.shape == predicted_matrix.shape[:3], "Unmatched shape between label edges and predicted edges"
         assert predicted_matrix.size(-1) == 4, "Last dimension of predicted edge matrix must be 4"
 
-        bsz, v_num = edge_matrix.shape[:2]
-        edge_matrix = edge_matrix.reshape(bsz, v_num*v_num)
+        if self.be_full_when_test and not self.training:
+            loss_mask = (edge_matrix != -1).int()
+            return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, loss_mask), \
+                   loss_mask
+        else:
+            bsz, v_num = edge_matrix.shape[:2]
+            edge_matrix = edge_matrix.reshape(bsz, v_num*v_num)
 
-        # Get indexes for edge/non-edge positions.
-        # Note non-edged positions have index 3.
-        non_edge_mask = (edge_matrix == 3)
-        # no_edge_idx_list = non_edge_mask.nonzero()
-        edge_mask = ((edge_matrix >= 0) & (edge_matrix < 3))
+            # Get indexes for edge/non-edge positions.
+            # Note non-edged positions have index 3.
+            non_edge_mask = (edge_matrix == 3)
+            # no_edge_idx_list = non_edge_mask.nonzero()
+            edge_mask = ((edge_matrix >= 0) & (edge_matrix < 3))
 
-        # Count number of edges per instance in the batch.
-        edge_count = stat_true_count_in_batch_dim(edge_mask)
+            # Count number of edges per instance in the batch.
+            edge_count = stat_true_count_in_batch_dim(edge_mask)
 
-        sampled_non_edge_mask = sample_2D_mask_by_count_in_batch_dim(non_edge_mask, edge_count)
-        # We use all the edged pairs and sampled partial edged pairs to compute final loss.
-        # W.r.t: len(edge) >= len(non_edge)
-        sampled_mask = sampled_non_edge_mask.bool() | edge_mask
-        return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, sampled_mask), \
-               sampled_mask.view(bsz, v_num, v_num)
+            sampled_non_edge_mask = sample_2D_mask_by_count_in_batch_dim(non_edge_mask, edge_count)
+            # We use all the edged pairs and sampled partial edged pairs to compute final loss.
+            # W.r.t: len(edge) >= len(non_edge)
+            sampled_mask = sampled_non_edge_mask.bool() | edge_mask
+            return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, sampled_mask), \
+                   sampled_mask.view(bsz, v_num, v_num)

@@ -8,10 +8,11 @@ from common.nn.loss_func import LossFunc
 from pretrain.comp.nn.utils import replace_int_value
 
 
-class LossSampler(Registrable):
+class LossSampler(Registrable, torch.nn.Module):
     def __init__(self,
                  loss_func: LossFunc,
                  **kwargs):
+        super().__init__()
         self.loss_func = loss_func
 
     def get_loss(self,
