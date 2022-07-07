@@ -1,9 +1,9 @@
-local data_vol_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_data/';
-local packed_data_vol_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_vol_data/';
+local data_vol_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_vol_data/';
 local pretrained_model = 'microsoft/codebert-base';
 local code_embed_dim = 768;
 local code_encode_dim = 768;
 local node_dim = 64;
+local vocab_size = 50625;
 
 local code_max_tokens = 256;
 local max_lines = 50;
@@ -61,11 +61,11 @@ local additional_special_tokens = [mlm_mask_token];
     },
 
     train_data_path: {
-        data_base_path: packed_data_vol_base_path,
+        data_base_path: data_vol_base_path,
         volume_range: [30,66]
     },
     validation_data_path: {
-        data_base_path: packed_data_vol_base_path,
+        data_base_path: data_vol_base_path,
         volume_range: [67,69]
     },
 
@@ -81,6 +81,7 @@ local additional_special_tokens = [mlm_mask_token];
                 tokenizer_type: tokenizer_type,
                 token_id_key: "token_ids",
                 mask_token: mlm_mask_token,
+                vocab_size: vocab_size,
                 loss_coeff: 1,
                 dropout: 0.1,
                 activation: "relu",
@@ -143,8 +144,8 @@ local additional_special_tokens = [mlm_mask_token];
         file_src: 'config/jsonnet/test_mlm_pretrain.jsonnet',
       },
       {
-        type: "save_epoch_model",
-        save_epoch_points: []
+        type: "save_epoch_state",
+        save_epoch_points: [4,9,14]
       },
     ],
     checkpointer: null,     // checkpointer is set to null to avoid saving model state at each episode

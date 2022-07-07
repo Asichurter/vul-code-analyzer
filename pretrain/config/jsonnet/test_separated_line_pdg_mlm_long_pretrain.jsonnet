@@ -1,8 +1,9 @@
-local data_vol_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_data/';
+local data_vol_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_vol_data/';
 local pretrained_model = 'microsoft/codebert-base';
 local code_embed_dim = 768;
 local code_encode_dim = 768;
 local node_dim = 64;
+local vocab_size = 50265;
 
 local code_max_tokens = 384;
 local max_lines = 50;
@@ -14,21 +15,19 @@ local additional_special_tokens = [mlm_mask_token];
 
 {
     extra: {
-        version: 13,
+        version: 16,
         decs: {
-            main: "mlm (no neg_sampling, mlm_coeff=1) + separated edge prediction",
-            data: "max_len=384",
+            main: "mlm (no neg_sampling, mlm_coeff=1, fix logits bug) + separated edge prediction",
             vol: "train: 30~66, val: 67~69",
             training: "20 epoch, lr=1e-4, poly_decay, min_lr=1e-6, no warmup",
+            tokenizer: "max_len = 384",
         },
     },
-
     vocabulary: {
         type: "from_pretrained_transformer",
         model_name: pretrained_model,
         namespace: code_namespace
     },
-
     dataset_reader: {
         type: "packed_line_pdg",
         code_tokenizer: {
@@ -57,6 +56,7 @@ local additional_special_tokens = [mlm_mask_token];
             type: "space_sub",
         },
         unified_label: false,
+        from_raw_data: false,
     },
 
     train_data_path: {
@@ -80,6 +80,7 @@ local additional_special_tokens = [mlm_mask_token];
                 tokenizer_type: tokenizer_type,
                 token_id_key: "token_ids",
                 mask_token: mlm_mask_token,
+                vocab_size: vocab_size,
                 loss_coeff: 1,
                 dropout: 0.1,
                 activation: "relu",
@@ -89,7 +90,6 @@ local additional_special_tokens = [mlm_mask_token];
                 negative_sampling_k: null,
             }
         ],
-
         code_embedder: {
           token_embedders: {
             code_tokens: {
@@ -126,7 +126,8 @@ local additional_special_tokens = [mlm_mask_token];
             type: "separated_balanced",
             loss_func: {
                 type: "bce"
-            }
+            },
+            be_full_when_test: true,
         },
         metric: {
             type: "separated_mask_accuracy",
@@ -164,11 +165,11 @@ local additional_special_tokens = [mlm_mask_token];
       { type: "model_param_stat" },
       {
         type: "save_jsonnet_config",
-        file_src: 'config/jsonnet/test_separated_line_pdg_mlm_pretrain.jsonnet',
+        file_src: 'config/jsonnet/test_separated_line_pdg_mlm_long_pretrain.jsonnet',
       },
       {
-        type: "save_epoch_model",
-        save_epoch_points: []
+        type: "save_epoch_state",
+        save_epoch_points: [4,9,14]
       },
     ],
     checkpointer: null,     // checkpointer is set to null to avoid saving model state at each episode
