@@ -199,7 +199,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
             # From raw data, use "self.text_to_instance"
             if self.from_raw_data:
                 vol_path = os.path.join(data_base_path, f'vol{vol}')
-                for item in tqdm(os.listdir(vol_path)):
+                for item in tqdm(os.listdir(vol_path), desc='from_raw_data'):
                     try:
                         pdg_data_item = read_dumped(os.path.join(vol_path, item))
                         ok, instance = self.text_to_instance(pdg_data_item)
@@ -209,13 +209,19 @@ class PackedLinePDGDatasetReader(DatasetReader):
                     except Exception as e:
                         logger.error('read', f'file path: {os.path.join(vol_path, item)}, error: {str(e)}')
 
-            # From preprocessed packed data pkl, use "self.dict_to_instance"
+            # From packed volume data pkl, also use "self.text_to_instance"
             else:
                 vol_path = os.path.join(data_base_path, f'packed_vol_{vol}.pkl')
                 packed_vol_data_items = read_dumped(vol_path)
-                for item in tqdm(packed_vol_data_items):
-                    instance = self.dict_to_instance(item)
-                    yield instance
+                for pdg_data_item in tqdm(packed_vol_data_items, desc='from_vol_packed_data'):
+                    try:
+                        ok, instance = self.text_to_instance(pdg_data_item)
+                        if ok:
+                            self.actual_read_samples += 1
+                            yield instance
+                    except Exception as e:
+                        logger.error('read', f'pdg-item content: {pdg_data_item}')
+
 
     def text_to_dict(self, packed_pdg: Dict) -> Tuple[bool, Dict]:
         code = packed_pdg['code']
