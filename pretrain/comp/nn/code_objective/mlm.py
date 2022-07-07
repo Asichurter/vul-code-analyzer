@@ -16,6 +16,7 @@ class MlmObjective(CodeObjective):
                  code_namespace: str,
                  token_dimension: int,
                  name: str,
+                 vocab_size: int = 50265,       # default to "CodeBERT + 1"
                  as_code_embedder: bool = True,
                  token_id_key: str = 'token_ids',
                  tokenizer_type: str = 'codebert',
@@ -37,9 +38,7 @@ class MlmObjective(CodeObjective):
         self.vocab = vocab
         self.code_namespace = code_namespace
         self.dense = torch.nn.Linear(token_dimension, token_dimension)
-        self.output_weight = torch.nn.Linear(token_dimension,
-                                             vocab.get_vocab_size(code_namespace),
-                                             bias=False)
+        self.output_weight = torch.nn.Linear(token_dimension, vocab_size, bias=False)
 
         self.dropout = dropout
         self.activation = build_activation(activation)
