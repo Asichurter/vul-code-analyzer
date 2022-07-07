@@ -86,6 +86,28 @@ class SaveEpochModelCallback(TrainerCallback):
             # remove the weight file after archiving
             os.remove(weight_file_path)
 
+@TrainerCallback.register('save_epoch_state')
+class SaveEpochStateCallback(TrainerCallback):
+    def __init__(self,
+                 serialization_dir,
+                 save_epoch_points: List[int] = []):
+        super().__init__(serialization_dir)
+        self._serial_dir = serialization_dir
+        self.save_epoch_points = save_epoch_points
+
+    def on_epoch(
+        self,
+        trainer: "GradientDescentTrainer",
+        metrics: Dict[str, Any],
+        epoch: int,
+        is_primary: bool = True,
+        **kwargs,
+    ) -> None:
+        if epoch in self.save_epoch_points:
+            weight_file_name = f'state_epoch_{epoch}.th'
+            weight_file_path = os.path.join(self.serialization_dir, weight_file_name)
+            trainer._save_model_state(weight_file_path)
+
 
 @TrainerCallback.register('log_grad_norm')
 class LogGradNormCallback(TrainerCallback):

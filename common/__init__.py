@@ -1,4 +1,4 @@
-from .modules.callbacks import EpochPrintCallback, ModelParamStatCallback, SaveEpochModelCallback, PartialLoadStateDictCallback
+from .modules.callbacks import EpochPrintCallback, ModelParamStatCallback, SaveEpochModelCallback, SaveEpochStateCallback, PartialLoadStateDictCallback
 from .nn.classifier import LinearSoftmaxClassifier, LinearSigmoidClassifier
 from .nn.loss_func import NllLoss, BinaryCrossEntropyLoss, CrossEntropyLoss, BCELoss
 from .modules.code_cleaner import SpaceSubCodeCleaner
