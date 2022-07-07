@@ -30,6 +30,7 @@ class CodeLinePDGAnalyzer(Model):
         drop_tokenizer_special_token_type: str = 'codebert',
         metric: Optional[Metric] = None,
         code_objectives: List[Lazy[CodeObjective]] = [],
+        pdg_loss_coeff: float = 1.,
         **kwargs
     ):
         super().__init__(vocab, **kwargs)
@@ -46,6 +47,8 @@ class CodeLinePDGAnalyzer(Model):
         self.from_embedding_code_objectives = torch.nn.ModuleList()
         self.any_as_code_embedder = False
         self.preprocess_pretrain_objectives(code_objectives, vocab)
+        self.pdg_loss_coeff = pdg_loss_coeff
+
         self.test = 0
 
     def preprocess_pretrain_objectives(self, objectives: List[Lazy[CodeObjective]], vocab: Vocabulary):
@@ -154,7 +157,7 @@ class CodeLinePDGAnalyzer(Model):
         # 5. Get Node Features ->
         # 6. Structure Prediction ->
         # 7. Final Loss Calculating
-
+        token_ids_cpu = code['code_tokens']['token_ids'].detach().cpu()
         from_token_pretrain_loss, encoded_code_outputs = self.pretrain_forward_from_token(line_idxes.device, code)
         if not self.any_as_code_embedder:
             # Shape: [batch, seq, dim]
@@ -174,6 +177,7 @@ class CodeLinePDGAnalyzer(Model):
         # Shape: [batch, vn, vn, 4]
         pred_edge_probs, pred_edge_labels = self.struct_decoder(node_features)
         loss, loss_mask = self.loss_sampler.get_loss(edges, pred_edge_probs, vertice_num)
+        loss *= self.pdg_loss_coeff
         loss += (from_token_pretrain_loss + from_embedding_pretrain_loss).squeeze()
 
         if self.metric is not None:
