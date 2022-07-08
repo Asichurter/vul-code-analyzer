@@ -1,4 +1,7 @@
 import os
+import sys
+
+sys.path.append('/data1/zhijietang/projects/vul-code-analyzer')
 
 from utils.cmd_args import read_aggre_eval_results_args
 from utils.file import load_json
