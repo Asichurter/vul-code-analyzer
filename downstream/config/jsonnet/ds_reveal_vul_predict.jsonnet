@@ -1,5 +1,6 @@
 local cv_data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/random_split/';
 local load_model_base_path = '/data1/zhijietang/vul_data/run_logs/pretrain/12/';
+local state_dict_file_name = 'state_epoch_9.th';
 local pretrained_model = 'microsoft/codebert-base';
 local code_embed_dim = 768;
 local code_encode_dim = 768;
@@ -10,25 +11,25 @@ local code_namespace = "code_tokens";
 
 local mlm_mask_token = "<MLM>";
 local additional_special_tokens = [mlm_mask_token];     # Add this special token to avoid embedding size mismatch
-local split_index = 1;
+local split_index = 0;
 
 local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
 
 {
     extra: {
-        version: -2,
+        version: 26,
         decs: {
-            main: "reveal random_split 1 + pretrain Ver.12 (no neg_samp, pdg+mlm)",
-            sampler: "No balancer",
-            extra: "no vocab config",
+            main: "reveal random_split 0 + pretrain Ver.12, epoch=9 (no neg_samp, pdg+mlm)",
+            sampler: "balanced rand sampler",
+            batch: "train batch_size = 32"
         },
     },
 
-//    vocabulary: {
-//        type: "from_pretrained_transformer",
-//        model_name: pretrained_model,
-//        namespace: code_namespace
-//    },
+    vocabulary: {
+        type: "from_pretrained_transformer",
+        model_name: pretrained_model,
+        namespace: code_namespace
+    },
 
 //    vocabulary: {
 //        type: "from_files",
@@ -105,11 +106,18 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
     },
 
   data_loader: {
-    batch_size: 16,
-    shuffle: true,
+//    batch_size: 32,
+//    shuffle: true,
+    batch_sampler: {
+        type: "binary_duplicate_balanced_rand",
+        batch_size: 32,
+        majority_label_index: 0,
+        label_key: 'label',
+        major_instance_ratio_in_batch: 0.5,
+    }
   },
   validation_data_loader: {
-    batch_size: 16,
+    batch_size: 32,
     shuffle: true,
   },
 
@@ -142,7 +150,7 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
       },
       {
         type: "partial_load_state_dict",
-        load_state_dict_path: load_model_base_path + "best.th",
+        load_state_dict_path: load_model_base_path + state_dict_file_name,
         load_prefix_remap: {
             code_embedder: "code_embedder"
         },
