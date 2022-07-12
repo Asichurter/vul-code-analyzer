@@ -22,6 +22,10 @@ def dump_pickle(obj, path):
     with open(path, 'wb') as f:
         pickle.dump(obj, f)
 
+def dump_text(text, path):
+    with open(path, 'w') as f:
+        f.write(text)
+
 def read_dumped(file_path, dump_format=None):
     # guess file format when format is not given
     if dump_format is None:
