@@ -1,4 +1,5 @@
 from .comp.dataset_readers.packed_pdg_dataset_reader import PackedLinePDGDatasetReader
+from .comp.dataset_readers.raw_pdg_predict_dataset_reader import RawPDGPredictDatasetReader
 from .comp.nn.node_encoder.mlp_node_encoder import MLPNodeEncoder
 from .comp.nn.loss_sampler.unified_loss_sampler import UnifiedFullLossSampler, UnifiedBalancedLossSampler
 from .comp.nn.loss_sampler.separated_loss_sampler import SeparatedFullLossSampler, SeparatedBalancedLossSampler
