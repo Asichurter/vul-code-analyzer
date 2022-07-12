@@ -157,7 +157,7 @@ class CodeLinePDGAnalyzer(Model):
         # 5. Get Node Features ->
         # 6. Structure Prediction ->
         # 7. Final Loss Calculating
-        token_ids_cpu = code['code_tokens']['token_ids'].detach().cpu()
+        # token_ids_cpu = code['code_tokens']['token_ids'].detach().cpu()
         from_token_pretrain_loss, encoded_code_outputs = self.pretrain_forward_from_token(line_idxes.device, code)
         if not self.any_as_code_embedder:
             # Shape: [batch, seq, dim]
@@ -185,8 +185,38 @@ class CodeLinePDGAnalyzer(Model):
 
         return {
             'edge_logits': pred_edge_probs,
+            'edge_labels': pred_edge_labels,
             'loss': loss
         }
+
+    def pdg_predict(self,
+                    code: TextFieldTensors,
+                    line_idxes: torch.Tensor,
+                    vertice_num: torch.Tensor,
+                    meta_data: List,
+                    return_node_features: bool = False,
+                    ) -> Dict[str, torch.Tensor]:
+        encoded_code_outputs = self.embed_encode_code(code)
+        code_token_features, code_token_mask = encoded_code_outputs['outputs'], encoded_code_outputs['mask']
+
+        # Shape: [batch, max_lines, dim]
+        code_line_features, code_line_mask = self.get_line_node_features(code_token_features, code_token_mask,
+                                                                         line_idxes, vertice_num)
+        # Shape: [batch, vn(max_lines), dim]
+        node_features = self.encode_node_features(code_line_features)
+
+        # Shape: [batch, vn, vn, 4]
+        pred_edge_probs, pred_edge_labels = self.struct_decoder(node_features)
+
+        ret_dict = {
+            'meta_data': meta_data,
+            'edge_logits': pred_edge_probs,
+            'edge_labels': pred_edge_labels,
+        }
+        if return_node_features:
+            ret_dict['node_features'] = node_features
+
+        return ret_dict
 
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
         metrics: Dict[str, float] = {}
