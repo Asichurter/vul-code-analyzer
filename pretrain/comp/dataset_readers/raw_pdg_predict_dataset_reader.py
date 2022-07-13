@@ -171,11 +171,18 @@ class RawPDGPredictDatasetReader(DatasetReader):
             return False, Instance({})
 
         self._check_data_correctness(code, tokenized_code, token_line_idxes)
+        meta_data = {'id': identifier}
+
+        # Probably take out label meta-data
+        for label_can in ['label', 'vulnerable']:
+            if label_can in packed_pdg:
+                meta_data['label'] = packed_pdg[label_can]
+                break
         fields = {
             'code': TextField(tokenized_code, self.code_token_indexers),
             'line_idxes': TensorField(token_line_idxes),
             'vertice_num': TensorField(torch.IntTensor([line_count])), # num. of line is vertice num.
-            'meta_data': MetadataField({'id': identifier})
+            'meta_data': MetadataField(meta_data)
         }
 
         return True, Instance(fields)
