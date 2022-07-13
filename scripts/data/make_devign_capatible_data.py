@@ -13,11 +13,11 @@ from utils.allennlp_utils.build_utils import build_dataset_reader_from_dict
 from utils.file import dump_pickle, load_json
 
 model_dump_base_path = '/data1/zhijietang/vul_data/run_logs/pretrain/12'
-data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/'
+data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/random_split/split_1'
 # data_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_vol_data/'
-data_file_name = 'non-vulnerables.json'
+data_file_name = 'test.json'
 # data_file_name = 'packed_vol_69.pkl'
-target_dump_path = '/data1/zhijietang/vul_data/reveal/predict/50_line_256_token/non_vulnerables.pkl'
+target_dump_path = '/data1/zhijietang/vul_data/datasets/reveal/predict/50_line_256_token/rs_1/test.pkl'
 model_name = 'microsoft/codebert-base'
 
 max_len = 256
@@ -72,9 +72,9 @@ with torch.no_grad():
             pred_edges = batch_pred_edges[j,:,:line_count,:line_count]
             converted_edges = convert_graph_edges(pred_edges)
             pdg_obj = {
-                'node_features': pdg_outputs['node_features'][j].detach().cpu(),
+                'node_features': pdg_outputs['node_features'][j,:line_count].detach().cpu(),
                 'graph': converted_edges,
-                'target': label,
+                'target': pdg_outputs['meta_data'][j]['label'], # label
                 'node_count': line_count,
                 'id': pdg_outputs['meta_data'][j]['id']
             }
