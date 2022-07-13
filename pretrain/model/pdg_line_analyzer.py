@@ -195,6 +195,7 @@ class CodeLinePDGAnalyzer(Model):
                     vertice_num: torch.Tensor,
                     meta_data: List,
                     return_node_features: bool = False,
+                    return_encoded_node: bool = True,
                     ) -> Dict[str, torch.Tensor]:
         encoded_code_outputs = self.embed_encode_code(code)
         code_token_features, code_token_mask = encoded_code_outputs['outputs'], encoded_code_outputs['mask']
@@ -214,7 +215,7 @@ class CodeLinePDGAnalyzer(Model):
             'edge_labels': pred_edge_labels,
         }
         if return_node_features:
-            ret_dict['node_features'] = node_features
+            ret_dict['node_features'] = node_features if return_encoded_node else code_line_features
 
         return ret_dict
 
