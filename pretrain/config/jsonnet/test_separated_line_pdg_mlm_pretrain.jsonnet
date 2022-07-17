@@ -5,7 +5,7 @@ local code_encode_dim = 768;
 local node_dim = 64;
 local vocab_size = 50265;
 
-local code_max_tokens = 256;
+local code_max_tokens = 512;
 local max_lines = 50;
 local code_namespace = "code_tokens";
 
@@ -15,11 +15,12 @@ local additional_special_tokens = [mlm_mask_token];
 
 {
     extra: {
-        version: 12,
+        version: 19,
         decs: {
             main: "mlm (no neg_sampling, mlm_coeff=1, fix logits bug) + separated edge prediction",
             vol: "train: 30~66, val: 67~69",
             training: "20 epoch, lr=1e-4, poly_decay, min_lr=1e-6, no warmup",
+            data: "max_len=512, max_line=50"
         },
     },
     vocabulary: {
@@ -129,13 +130,13 @@ local additional_special_tokens = [mlm_mask_token];
             be_full_when_test: true,
         },
         metric: {
-            type: "separated_mask_accuracy",
+            type: "separated_mask_f1",
         },
         drop_tokenizer_special_token_type: tokenizer_type,
     },
 
   data_loader: {
-    batch_size: 32,
+    batch_size: 16,
     shuffle: true,
   },
   validation_data_loader: {
@@ -158,7 +159,7 @@ local additional_special_tokens = [mlm_mask_token];
         warmup_steps: 0,
         end_learning_rate: 1e-6
     },
-    num_gradient_accumulation_steps: 2,
+    num_gradient_accumulation_steps: 4,
     callbacks: [
       { type: "epoch_print" },
       { type: "model_param_stat" },

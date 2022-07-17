@@ -17,8 +17,9 @@ data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/random_split/split_
 # data_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_vol_data/'
 data_file_name = 'test.json'
 # data_file_name = 'packed_vol_69.pkl'
-target_dump_path = '/data1/zhijietang/vul_data/datasets/reveal/predict/50_line_256_token/rs_1/test.pkl'
+target_dump_path = '/data1/zhijietang/vul_data/datasets/reveal/predict/raw_50_line_256_token_e9/rs_1/test.pkl'
 model_name = 'microsoft/codebert-base'
+load_model_name = 'model_epoch_9.tar.gz'
 
 max_len = 256
 max_lines = 50
@@ -30,7 +31,7 @@ overwrite_reader_config = {
     'type': 'raw_pdg_predict',
     'max_lines': max_lines,
     'code_max_tokens': max_len,
-    'identifier_key': 'hash',
+    'identifier_key': 'id',
 }
 
 def convert_graph_edges(edge_labels: torch.Tensor):
@@ -50,7 +51,7 @@ del reader_config['from_raw_data']
 del reader_config['pdg_max_vertice']
 reader: RawPDGPredictDatasetReader = build_dataset_reader_from_dict(reader_config)
 
-model: CodeLinePDGAnalyzer = Model.from_archive(path_join(model_dump_base_path, 'model.tar.gz'))
+model: CodeLinePDGAnalyzer = Model.from_archive(path_join(model_dump_base_path, load_model_name))
 
 data_loader = MultiProcessDataLoader(reader, path_join(data_base_path, data_file_name),
                                      batch_size=batch_size, shuffle=True, cuda_device=cuda_device)
@@ -64,7 +65,7 @@ target_pdg_data = []
 with torch.no_grad():
     model.eval()
     for i, batch in enumerate(tqdm(data_loader)):
-        pdg_outputs = model.pdg_predict(return_node_features=True, **batch)
+        pdg_outputs = model.pdg_predict(return_node_features=True, return_encoded_node=False, **batch)
         batch_pred_edges = pdg_outputs['edge_labels'].detach().cpu()
         batch_len = len(pdg_outputs['edge_labels'])
         for j in range(batch_len):
