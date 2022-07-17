@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import torch
 from allennlp.common import Lazy
@@ -9,6 +9,7 @@ from allennlp.modules import TextFieldEmbedder, Seq2SeqEncoder
 from allennlp.nn.util import get_text_field_mask
 
 from pretrain.comp.nn.code_objective.code_objective import CodeObjective
+from pretrain.comp.nn.line_extractor import LineExtractor
 
 
 @Model.register('code_objective_trainer')
@@ -131,6 +132,21 @@ class CodeObjectiveTrainer(Model):
 
         return {
             'loss': loss
+        }
+
+    def extract_line_features(self,
+                              code: TextFieldTensors,
+                              line_idxes: torch.Tensor,
+                              line_extractor: LineExtractor,
+                              meta_data: Optional[List] = None,
+                              vertice_num: Optional[torch.Tensor] = None,
+                              **kwargs):
+        encoded_code_outputs = self.embed_encode_code(code)
+        code_token_features, code_token_mask = encoded_code_outputs['outputs'], encoded_code_outputs['mask']
+        line_features, line_mask = line_extractor(code_token_features, code_token_mask, line_idxes, vertice_num)
+        return {
+            'node_features': line_features,
+            'meta_data': meta_data
         }
 
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:

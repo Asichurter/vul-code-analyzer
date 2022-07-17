@@ -146,8 +146,9 @@ class CodeLinePDGAnalyzer(Model):
     def forward(self,
                 code: TextFieldTensors,
                 line_idxes: torch.Tensor,
-                edges: torch.Tensor,
                 vertice_num: torch.Tensor,
+                edges: Optional[torch.Tensor] = None,
+                meta_data: Optional[List] = None,
                 **kwargs) -> Dict[str, torch.Tensor]:
         # [Outline]
         # 1. Token-based Pretrain Objective Computing.
@@ -157,16 +158,20 @@ class CodeLinePDGAnalyzer(Model):
         # 5. Get Node Features ->
         # 6. Structure Prediction ->
         # 7. Final Loss Calculating
-        # token_ids_cpu = code['code_tokens']['token_ids'].detach().cpu()
-        from_token_pretrain_loss, encoded_code_outputs = self.pretrain_forward_from_token(line_idxes.device, code)
-        if not self.any_as_code_embedder:
-            # Shape: [batch, seq, dim]
-            encoded_code_outputs = self.embed_encode_code(code)
 
-        code_token_features, code_token_mask = encoded_code_outputs['outputs'], encoded_code_outputs['mask']
-        from_embedding_pretrain_loss = self.pretrain_forward_from_embedding(line_idxes.device,
-                                                                            code_token_features,
-                                                                            code_token_mask)
+        if edges is not None:
+            from_token_pretrain_loss, encoded_code_outputs = self.pretrain_forward_from_token(line_idxes.device, code)
+            if not self.any_as_code_embedder:
+                # Shape: [batch, seq, dim]
+                encoded_code_outputs = self.embed_encode_code(code)
+
+            code_token_features, code_token_mask = encoded_code_outputs['outputs'], encoded_code_outputs['mask']
+            from_embedding_pretrain_loss = self.pretrain_forward_from_embedding(line_idxes.device,
+                                                                                code_token_features,
+                                                                                code_token_mask)
+        else:
+            encoded_code_outputs = self.embed_encode_code(code)
+            code_token_features, code_token_mask = encoded_code_outputs['outputs'], encoded_code_outputs['mask']
 
         # Shape: [batch, max_lines, dim]
         code_line_features, code_line_mask = self.get_line_node_features(code_token_features, code_token_mask,
@@ -176,18 +181,26 @@ class CodeLinePDGAnalyzer(Model):
 
         # Shape: [batch, vn, vn, 4]
         pred_edge_probs, pred_edge_labels = self.struct_decoder(node_features)
-        loss, loss_mask = self.loss_sampler.get_loss(edges, pred_edge_probs, vertice_num)
-        loss *= self.pdg_loss_coeff
-        loss += (from_token_pretrain_loss + from_embedding_pretrain_loss).squeeze()
 
-        if self.metric is not None:
-            self.metric(pred_edge_labels, edges, loss_mask)
+        if edges is None:
+            return {
+                'meta_data': meta_data,
+                'edge_logits': pred_edge_probs,
+                'edge_labels': pred_edge_labels,
+            }
+        else:
+            loss, loss_mask = self.loss_sampler.get_loss(edges, pred_edge_probs, vertice_num)
+            loss *= self.pdg_loss_coeff
+            loss += (from_token_pretrain_loss + from_embedding_pretrain_loss).squeeze()
 
-        return {
-            'edge_logits': pred_edge_probs,
-            'edge_labels': pred_edge_labels,
-            'loss': loss
-        }
+            if self.metric is not None:
+                self.metric(pred_edge_labels, edges, loss_mask)
+
+            return {
+                'edge_logits': pred_edge_probs,
+                'edge_labels': pred_edge_labels,
+                'loss': loss
+            }
 
     def pdg_predict(self,
                     code: TextFieldTensors,
