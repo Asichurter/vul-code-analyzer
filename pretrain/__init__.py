@@ -6,8 +6,9 @@ from .comp.nn.loss_sampler.separated_loss_sampler import SeparatedFullLossSample
 from .comp.nn.struct_decoder.directed.simple_unified_struct_decoder import NodeMergeUnifiedStructDecoder
 from .comp.nn.struct_decoder.directed.simple_separated_struct_decoder import BilinearSeparatedStructDecoder
 from .comp.metric.unified_pretrain_metric import UnifiedMaskAccuracy
-from .comp.metric.separated_pretrain_metric import SeparatedMaskAccuracy
+from .comp.metric.separated_pretrain_metric import SeparatedMaskAccuracy, SeparatedMaskF1
 from .comp.nn.code_objective.mlm import MlmObjective
+from .comp.nn.line_extractor import AvgLineExtractor
 
 from .model.pdg_line_analyzer import CodeLinePDGAnalyzer
 from .model.code_objective_trainer import CodeObjectiveTrainer
