@@ -10,6 +10,10 @@ def load_json(path):
         j = json.load(f)
     return j
 
+def load_text(path):
+    with open(path, 'r', encoding='UTF-8') as f:
+        return f.read()
+
 def dump_json(obj, path, indent=4, sort=False):
     with open(path, 'w', encoding='UTF-8') as f:
         json.dump(obj, f, indent=indent, ensure_ascii=False, sort_keys=sort)
