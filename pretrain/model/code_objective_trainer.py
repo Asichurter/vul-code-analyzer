@@ -9,7 +9,7 @@ from allennlp.modules import TextFieldEmbedder, Seq2SeqEncoder
 from allennlp.nn.util import get_text_field_mask
 
 from pretrain.comp.nn.code_objective.code_objective import CodeObjective
-from pretrain.comp.nn.line_extractor import LineExtractor
+from pretrain.comp.nn.line_extractor import LineExtractor, AvgLineExtractor
 
 
 @Model.register('code_objective_trainer')
@@ -22,6 +22,7 @@ class CodeObjectiveTrainer(Model):
         drop_tokenizer_special_token_type: str = 'codebert',
         # metric: Optional[Metric] = None,
         code_objectives: List[Lazy[CodeObjective]] = [],
+        line_extractor: Optional[LineExtractor] = None,
         **kwargs
     ):
         super().__init__(vocab, **kwargs)
@@ -33,6 +34,7 @@ class CodeObjectiveTrainer(Model):
         self.from_embedding_code_objectives = torch.nn.ModuleList()
         self.any_as_code_embedder = False
         self.preprocess_pretrain_objectives(code_objectives, vocab)
+        self.line_extractor = line_extractor
         self.test = 0
 
         assert self.any_as_code_embedder
@@ -113,26 +115,44 @@ class CodeObjectiveTrainer(Model):
     def forward(self,
                 code: TextFieldTensors,
                 line_idxes: torch.Tensor,
-                edges: torch.Tensor,
                 vertice_num: torch.Tensor,
+                edges: Optional[torch.Tensor] = None,
+                meta_data: Optional[List[Dict]] = None,
                 **kwargs) -> Dict[str, torch.Tensor]:
 
-        from_token_pretrain_loss, encoded_code_outputs = self.pretrain_forward_from_token(line_idxes.device, code)
+        # Since we can not inject kwarg into forward method call,
+        # we can only fetch some information from meta_data field.
+        if meta_data is None:
+            forward_type = 'mlm'
+        else:
+            # Assert meta_data is dict type.
+            forward_type = meta_data[0].get('forward_type', 'mlm')
 
-        if not self.any_as_code_embedder:
-            # Shape: [batch, seq, dim]
+        if forward_type == 'mlm':
+            from_token_pretrain_loss, encoded_code_outputs = self.pretrain_forward_from_token(line_idxes.device, code)
+            if not self.any_as_code_embedder:
+                # Shape: [batch, seq, dim]
+                encoded_code_outputs = self.embed_encode_code(code)
+
+            code_token_features, code_token_mask = encoded_code_outputs['outputs'], encoded_code_outputs['mask']
+            from_embedding_pretrain_loss = self.pretrain_forward_from_embedding(line_idxes.device,
+                                                                                code_token_features,
+                                                                                code_token_mask)
+            loss = (from_token_pretrain_loss + from_embedding_pretrain_loss).squeeze(-1)
+            return {
+                'loss': loss
+            }
+        elif forward_type == 'line_features':
             encoded_code_outputs = self.embed_encode_code(code)
+            code_token_features, code_token_mask = encoded_code_outputs['outputs'], encoded_code_outputs['mask']
+            line_features, line_mask = self.line_extractor(code_token_features, code_token_mask, line_idxes, vertice_num)
+            return {
+                'line_features': line_features,
+                'meta_data': meta_data
+            }
+        else:
+            raise ValueError(f'Unsupported forward type: {forward_type}')
 
-        code_token_features, code_token_mask = encoded_code_outputs['outputs'], encoded_code_outputs['mask']
-        from_embedding_pretrain_loss = self.pretrain_forward_from_embedding(line_idxes.device,
-                                                                            code_token_features,
-                                                                            code_token_mask)
-
-        loss = (from_token_pretrain_loss + from_embedding_pretrain_loss).squeeze(-1)
-
-        return {
-            'loss': loss
-        }
 
     def extract_line_features(self,
                               code: TextFieldTensors,

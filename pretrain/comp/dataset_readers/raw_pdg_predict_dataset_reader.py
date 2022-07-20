@@ -26,6 +26,7 @@ class RawPDGPredictDatasetReader(DatasetReader):
                  only_keep_complete_lines: bool = True,
                  unified_label: bool = True,
                  identifier_key: str = 'hash',
+                 meta_data_keys: Dict[str, str] = {},
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
@@ -41,6 +42,7 @@ class RawPDGPredictDatasetReader(DatasetReader):
         self.only_keep_complete_lines = only_keep_complete_lines
         self.unified_label = unified_label
         self.identifier_key = identifier_key
+        self.meta_data_keys = meta_data_keys
 
         self.actual_read_samples = 0
 
@@ -156,7 +158,7 @@ class RawPDGPredictDatasetReader(DatasetReader):
                                f'code_len({len(tokenized_code)}) - 2 != index_len({len(line_indexes)}). '
                                f'\noriginal code: {original_code}')
 
-    def text_to_instance(self, packed_pdg: Dict) -> Tuple[bool, Instance]:
+    def text_to_instance(self, packed_pdg: Dict, forward_type: str = 'mlm') -> Tuple[bool, Instance]:
         code = packed_pdg['code']
         if self.identifier_key is not None:
             identifier = packed_pdg[self.identifier_key]
@@ -171,13 +173,12 @@ class RawPDGPredictDatasetReader(DatasetReader):
             return False, Instance({})
 
         self._check_data_correctness(code, tokenized_code, token_line_idxes)
-        meta_data = {'id': identifier}
+        meta_data = {'id': identifier, 'forward_type': forward_type}
 
-        # Probably take out label meta-data
-        for label_can in ['label', 'vulnerable']:
-            if label_can in packed_pdg:
-                meta_data['label'] = packed_pdg[label_can]
-                break
+        # Add meta-data
+        for meta_data_key in self.meta_data_keys:
+            meta_data[self.meta_data_keys[meta_data_key]] = packed_pdg[meta_data_key]
+
         fields = {
             'code': TextField(tokenized_code, self.code_token_indexers),
             'line_idxes': TensorField(token_line_idxes),
