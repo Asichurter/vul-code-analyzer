@@ -206,3 +206,16 @@ class PartialLoadStateDictCallback(TrainerCallback):
         partial_load_state_dict(model, state_dict, self.load_prefix_remap)
 
 
+@TrainerCallback.register('model_epoch_increment')
+class ModelEpochIncrementCallback(TrainerCallback):
+    def on_epoch(
+        self,
+        trainer: "GradientDescentTrainer",
+        metrics: Dict[str, Any],
+        epoch: int,
+        is_primary: bool = True,
+        **kwargs,
+    ) -> None:
+        trainer.model.cur_epoch += 1
+
+

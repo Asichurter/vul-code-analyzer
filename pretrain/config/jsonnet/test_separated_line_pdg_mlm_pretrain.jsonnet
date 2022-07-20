@@ -5,7 +5,7 @@ local code_encode_dim = 768;
 local node_dim = 64;
 local vocab_size = 50265;
 
-local code_max_tokens = 512;
+local code_max_tokens = 256;
 local max_lines = 50;
 local code_namespace = "code_tokens";
 
@@ -15,12 +15,13 @@ local additional_special_tokens = [mlm_mask_token];
 
 {
     extra: {
-        version: 19,
+        version: -1,
         decs: {
             main: "mlm (no neg_sampling, mlm_coeff=1, fix logits bug) + separated edge prediction",
             vol: "train: 30~66, val: 67~69",
-            training: "20 epoch, lr=1e-4, poly_decay, min_lr=1e-6, no warmup",
-            data: "max_len=512, max_line=50"
+            training: "20 epoch, PGD start from 10 epochs",
+            metric: "masked f1",
+            loss_sampler: "full loss",
         },
     },
     vocabulary: {
@@ -61,11 +62,11 @@ local additional_special_tokens = [mlm_mask_token];
 
     train_data_path: {
         data_base_path: data_vol_base_path,
-        volume_range: [30,66]
+        volume_range: [66,66]
     },
     validation_data_path: {
         data_base_path: data_vol_base_path,
-        volume_range: [67,69]
+        volume_range: [69,69]
     },
 
     model: {
@@ -88,6 +89,7 @@ local additional_special_tokens = [mlm_mask_token];
                 mask_ratio: 0.8,
                 replace_ratio: 0.1,
                 negative_sampling_k: null,
+                loss_epoch_range: [0,20]
             }
         ],
         code_embedder: {
@@ -123,16 +125,17 @@ local additional_special_tokens = [mlm_mask_token];
             input_dim: node_dim,
         },
         loss_sampler: {
-            type: "separated_balanced",
+            type: "separated_full",
             loss_func: {
                 type: "bce"
             },
-            be_full_when_test: true,
+//            be_full_when_test: true,
         },
         metric: {
             type: "separated_mask_f1",
         },
         drop_tokenizer_special_token_type: tokenizer_type,
+        pdg_loss_range: [10,20]
     },
 
   data_loader: {
@@ -163,13 +166,14 @@ local additional_special_tokens = [mlm_mask_token];
     callbacks: [
       { type: "epoch_print" },
       { type: "model_param_stat" },
+      { type: "model_epoch_increment" },
       {
         type: "save_jsonnet_config",
         file_src: 'config/jsonnet/test_separated_line_pdg_mlm_pretrain.jsonnet',
       },
       {
         type: "save_epoch_state",
-        save_epoch_points: [4,9,14]
+        save_epoch_points: [14]
       },
     ],
     checkpointer: null,     // checkpointer is set to null to avoid saving model state at each episode

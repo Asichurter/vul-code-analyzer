@@ -1,4 +1,4 @@
-from typing import Callable, Dict
+from typing import Callable, Dict, List
 
 import torch
 
@@ -15,11 +15,13 @@ class CodeObjective(torch.nn.Module, Registrable):
                  as_code_embedder: bool = False,
                  forward_from_where: str = 'embedding',
                  loss_coeff: float = 1.,
+                 loss_epoch_range: List[int] = [-1,-1],
                  **kwargs):
         self.name = name
         self.as_code_embedder = as_code_embedder
         self.loss_coeff = loss_coeff
         self.loss_metric = ObjectiveLoss(name)
+        self.loss_epoch_range = loss_epoch_range
 
         assert forward_from_where in ['token', 'embedding']
         self.forward_from_where = forward_from_where
@@ -28,6 +30,7 @@ class CodeObjective(torch.nn.Module, Registrable):
     def forward_from_token(self,
                            code: TextFieldTensors,
                            code_embed_func: Callable,
+                           epoch: int,
                            **kwargs) -> Dict:
         raise NotImplementedError
 
@@ -35,6 +38,7 @@ class CodeObjective(torch.nn.Module, Registrable):
                                token_embedding: torch.Tensor,
                                token_mask: torch.Tensor,
                                tensor_dict: Dict[str, torch.Tensor],
+                               epoch: int,
                                **kwargs) -> Dict:
         raise NotImplementedError
 
@@ -49,3 +53,13 @@ class CodeObjective(torch.nn.Module, Registrable):
 
     def update_metric(self, *args, **kwargs):
         self.loss_metric(*args, **kwargs)
+
+    def rectify_loss_based_on_range(self, loss, epoch):
+        # Default behavior: Always in range.
+        if self.loss_epoch_range[0] == self.loss_epoch_range[1] == -1:
+            return loss
+
+        if self.loss_epoch_range[0] <= epoch <= self.loss_epoch_range[1]:
+            return loss
+        else:
+            return 0    # todo: Maybe 'torch.zeros_as(loss)' ?

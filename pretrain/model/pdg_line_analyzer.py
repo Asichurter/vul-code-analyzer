@@ -31,6 +31,7 @@ class CodeLinePDGAnalyzer(Model):
         metric: Optional[Metric] = None,
         code_objectives: List[Lazy[CodeObjective]] = [],
         pdg_loss_coeff: float = 1.,
+        pdg_loss_range: List[int] = [-1,-1],
         **kwargs
     ):
         super().__init__(vocab, **kwargs)
@@ -48,6 +49,8 @@ class CodeLinePDGAnalyzer(Model):
         self.any_as_code_embedder = False
         self.preprocess_pretrain_objectives(code_objectives, vocab)
         self.pdg_loss_coeff = pdg_loss_coeff
+        self.pdg_loss_range = pdg_loss_range
+        self.cur_epoch = 0
 
         self.test = 0
 
@@ -113,6 +116,7 @@ class CodeLinePDGAnalyzer(Model):
         for obj in self.from_token_code_objectives:
             obj_output = obj(code=code,
                              code_embed_func=self.embed_encode_code,
+                             epoch=self.cur_epoch,
                              **kwargs)
             # Update loss.
             obj_loss = obj_output['loss'] # / len(self.from_token_code_objectives)
@@ -135,6 +139,7 @@ class CodeLinePDGAnalyzer(Model):
             obj_output = obj(token_embedding=token_embedding,
                              token_mask=token_mask,
                              tensor_dict=tensor_dict,
+                             epoch=self.cur_epoch,
                              **kwargs)
             # Update loss.
             obj_loss = obj_output['loss'] # / len(self.from_embedding_code_objectives)
@@ -142,6 +147,12 @@ class CodeLinePDGAnalyzer(Model):
             obj.update_metric(loss)
 
         return loss
+
+    def check_pdg_loss_in_range(self):
+        # Default behavior: Always in range.
+        if self.pdg_loss_range[0] == self.pdg_loss_range[1] == -1:
+            return True
+        return self.pdg_loss_range[0] <= self.cur_epoch <= self.pdg_loss_range[1]
 
     def forward(self,
                 code: TextFieldTensors,
@@ -189,17 +200,21 @@ class CodeLinePDGAnalyzer(Model):
                 'edge_labels': pred_edge_labels,
             }
         else:
-            loss, loss_mask = self.loss_sampler.get_loss(edges, pred_edge_probs, vertice_num)
-            loss *= self.pdg_loss_coeff
-            loss += (from_token_pretrain_loss + from_embedding_pretrain_loss).squeeze()
+            pdg_loss, pdg_loss_mask = self.loss_sampler.get_loss(edges, pred_edge_probs, vertice_num)
+            pdg_loss *= self.pdg_loss_coeff
 
-            if self.metric is not None:
-                self.metric(pred_edge_labels, edges, loss_mask)
+            # Check pdg loss is in range.
+            pdg_loss_in_range = self.check_pdg_loss_in_range()
+            final_loss = 0 if not pdg_loss_in_range else pdg_loss
+            final_loss += (from_token_pretrain_loss + from_embedding_pretrain_loss).squeeze()
+
+            if self.metric is not None and pdg_loss_in_range:
+                self.metric(pred_edge_labels, edges, pdg_loss_mask)
 
             return {
                 'edge_logits': pred_edge_probs,
                 'edge_labels': pred_edge_labels,
-                'loss': loss
+                'loss': final_loss
             }
 
     def pdg_predict(self,

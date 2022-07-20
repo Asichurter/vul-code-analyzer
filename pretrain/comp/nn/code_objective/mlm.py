@@ -1,4 +1,4 @@
-from typing import Callable, Tuple, Dict, Optional
+from typing import Callable, Tuple, Dict, Optional, List
 
 import torch
 import torch.nn.functional as F
@@ -28,12 +28,14 @@ class MlmObjective(CodeObjective):
                  mask_ratio: float = 0.8,       # how many sampled tokens to mask
                  replace_ratio: float = 0.1,    # how many sampled tokens to replace with a random token
                  negative_sampling_k: Optional[int] = None,
+                 loss_epoch_range: List[int] = [-1, -1],
                  **kwargs):
         super().__init__(vocab,
                          name=name,
                          loss_coeff=loss_coeff,
                          as_code_embedder=as_code_embedder,
                          forward_from_where='token',
+                         loss_epoch_range = loss_epoch_range,
                          **kwargs)
         self.vocab = vocab
         self.code_namespace = code_namespace
@@ -127,7 +129,7 @@ class MlmObjective(CodeObjective):
         return code, sampled_mask, original_sampled_token_ids
 
 
-    def mlm_loss(self, pred_logits, label):
+    def mlm_loss(self, pred_logits, label, epoch):
         """
         Produce MLM loss based on predicted logits and real token ids of masked tokens.
         Negative sampling can be done here to mask some negative items when computing
@@ -170,6 +172,7 @@ class MlmObjective(CodeObjective):
         # pred_probs = pred_logits.softmax(dim=-1)
         loss  = F.cross_entropy(pred_logits, label)
         loss = loss * self.loss_coeff
+        loss = self.rectify_loss_based_on_range(loss, epoch)
         return loss
 
 
@@ -180,6 +183,7 @@ class MlmObjective(CodeObjective):
     def forward_from_token(self,
                            code: TextFieldTensors,
                            code_embed_func: Callable,
+                           epoch: int,
                            **kwargs) -> Dict:
         code, sampled_mask, original_sampled_token_ids = self.random_mask(code)
         code_embed_outputs = code_embed_func(code)
@@ -193,7 +197,7 @@ class MlmObjective(CodeObjective):
         sampled_code_embeddings = F.dropout(sampled_code_embeddings, self.dropout)
         sampled_code_outputs = self.output_weight(sampled_code_embeddings)
 
-        mlm_loss = self.mlm_loss(sampled_code_outputs, original_sampled_token_ids)
+        mlm_loss = self.mlm_loss(sampled_code_outputs, original_sampled_token_ids, epoch)
         output_dict =  {'loss': mlm_loss}
         output_dict.update(code_embed_outputs)
         return output_dict
