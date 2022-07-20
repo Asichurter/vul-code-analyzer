@@ -1,7 +1,7 @@
 
 from utils.file import load_json, dump_json
 
-data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/random_split/split_2/'
+data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/small/random_split/split_1/'
 
 total_count = 0
 for split in ['train', 'validate', 'test']:

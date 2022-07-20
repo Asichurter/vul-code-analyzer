@@ -1,5 +1,5 @@
-local cv_data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/random_split/';
-local load_model_base_path = '/data1/zhijietang/vul_data/run_logs/pretrain/12/';
+local cv_data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/small/random_split/';
+local load_model_base_path = '/data1/zhijietang/vul_data/run_logs/pretrain/15/';
 local state_dict_file_name = 'state_epoch_9.th';
 local pretrained_model = 'microsoft/codebert-base';
 local code_embed_dim = 768;
@@ -17,11 +17,11 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
 
 {
     extra: {
-        version: 26,
+        version: 1003,
         decs: {
-            main: "reveal random_split 0 + pretrain Ver.12, epoch=9 (no neg_samp, pdg+mlm)",
-            sampler: "balanced rand sampler",
-            batch: "train batch_size = 32"
+            main: "reveal small-256, random_split 0 + pretrain Ver.20, epoch=best (mlm+10epoch pdg)",
+            embedder: "Fixed embedder after loading",
+            batch: "train batch_size = 64",
         },
     },
 
@@ -71,7 +71,7 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
             code_tokens: {
               type: "pretrained_transformer",
               model_name: pretrained_model,
-              train_parameters: true,
+              train_parameters: false,
               tokenizer_kwargs: {
                 additional_special_tokens: additional_special_tokens
              }
@@ -101,41 +101,34 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
         metric: {
             type: "f1",
             positive_label: 1,
-//            top_k: 1
         },
     },
 
   data_loader: {
-//    batch_size: 32,
-//    shuffle: true,
-    batch_sampler: {
-        type: "binary_duplicate_balanced_rand",
-        batch_size: 32,
-        majority_label_index: 0,
-        label_key: 'label',
-        major_instance_ratio_in_batch: 0.5,
-    }
+    batch_size: 64,
+    shuffle: true,
+//    batch_sampler: {
+//        type: "binary_duplicate_balanced_rand",
+//        batch_size: 32,
+//        majority_label_index: 0,
+//        label_key: 'label',
+//        major_instance_ratio_in_batch: 0.5,
+//    }
   },
   validation_data_loader: {
-    batch_size: 32,
+    batch_size: 64,
     shuffle: true,
   },
 
   trainer: {
     num_epochs: 10,
     patience: null,
-    cuda_device: 2,
+    cuda_device: 1,
     validation_metric: "+f1",
     optimizer: {
       type: "adam",
-      lr: 1e-5
+      lr: 5e-5
     },
-//    learning_rate_scheduler: {
-//        type: "polynomial_decay",
-//        power: 2,
-//        warmup_steps: 0,
-//        end_learning_rate: 1e-6
-//    },
     num_gradient_accumulation_steps: 1,
     callbacks: [
       { type: "epoch_print" },
@@ -152,7 +145,7 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
         type: "partial_load_state_dict",
         load_state_dict_path: load_model_base_path + state_dict_file_name,
         load_prefix_remap: {
-            code_embedder: "code_embedder"
+            "code_embedder": "code_embedder"
         },
       },
     ],

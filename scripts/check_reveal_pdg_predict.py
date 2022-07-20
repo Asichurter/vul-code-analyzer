@@ -1,6 +1,7 @@
 from os.path import join as join_path
 import os
 import torch
+from tqdm import tqdm
 from allennlp.common import JsonDict
 from allennlp.data import Instance
 import numpy
@@ -59,14 +60,14 @@ def print_metrics(preds, labels, title):
     print(f'Recall: {recall}')
     print(f'F1: {f1}')
 
-load_model_base_path = '/data1/zhijietang/vul_data/run_logs/pretrain/12'
-load_model_file_name = 'model_epoch_9.tar.gz'
+load_model_base_path = '/data1/zhijietang/vul_data/run_logs/pretrain/20'
+load_model_file_name = 'model_epoch_14.tar.gz'
 
 data_base_path = '/data1/zhijietang/vul_data/datasets/docker/packed_reveal/'
 
 max_lines = 50
 # batch_size = 32
-cuda_device = 2
+cuda_device = 3
 
 overwrite_reader_config = {
     'type': 'raw_pdg_predict',
@@ -100,26 +101,30 @@ with torch.no_grad():
     for folder in os.listdir(data_base_path):
         folder_base_path = join_path(data_base_path, folder)
         folder_count = 0
-        for item in os.listdir(folder_base_path):
+        for item in tqdm(os.listdir(folder_base_path)):
             item_path = join_path(folder_base_path, item)
             data_item = load_json(item_path)
             if data_item['total_line'] > max_lines or data_item['total_line'] <= 1:
                 continue
 
             data_item['name'] = item_path
-            predict_output = predictor.predict_json(data_item)
-            pred_edges = predict_output['edge_labels']
-            (data_pred, ctrl_pred), (data_label, ctrl_label) = score_pdg_predict(reader, pred_edges, data_item['edges'], data_item['total_line'])
-            data_preds.extend(data_pred)
-            data_labels.extend(data_label)
-            ctrl_preds.extend(ctrl_pred)
-            ctrl_labels.extend(ctrl_label)
-            # print(f'Item: {item_path}\nMetrics:{metrics}')
-            # accs.append(metrics['accuracy'])
-            # pres.append(metrics['precision'])
-            # recs.append(metrics['recall'])
-            # f1s.append(metrics['f1'])
-            folder_count += 1
+            try:
+                predict_output = predictor.predict_json(data_item)
+                pred_edges = predict_output['edge_labels']
+                (data_pred, ctrl_pred), (data_label, ctrl_label) = score_pdg_predict(reader, pred_edges, data_item['edges'], data_item['total_line'])
+                data_preds.extend(data_pred)
+                data_labels.extend(data_label)
+                ctrl_preds.extend(ctrl_pred)
+                ctrl_labels.extend(ctrl_label)
+                # print(f'Item: {item_path}\nMetrics:{metrics}')
+                # accs.append(metrics['accuracy'])
+                # pres.append(metrics['precision'])
+                # recs.append(metrics['recall'])
+                # f1s.append(metrics['f1'])
+                folder_count += 1
+            except Exception as e:
+                print(f'Error, item: {item_path}, err_msg: {e}')
+                continue
 
         print(f'{folder}: {folder_count}')
 

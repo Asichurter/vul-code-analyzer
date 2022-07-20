@@ -26,7 +26,7 @@ model_name = args.model_name
 cuda_device = args.cuda
 subset = args.subset
 
-data_base_path = f"/data1/zhijietang/vul_data/datasets/reveal/random_split/{subset}/"
+data_base_path = f"/data1/zhijietang/vul_data/datasets/reveal/small/random_split/{subset}/"
 data_file_path = data_base_path + data_file_name
 model_base_path = f'/data1/zhijietang/vul_data/run_logs/reveal_vul_predict/{version}/'
 model_path = model_base_path + model_name
