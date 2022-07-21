@@ -11,7 +11,8 @@ from torch.nn import BCELoss
 from torch.optim import Adam
 
 from downstream.model.devign.data_loader.dataset import DataSet
-from downstream.model.devign.modules.model import DevignModel, GGNNSum, GGNNSumNew, GGNNMeanResidual
+from downstream.model.devign.modules.model import DevignModel, GGNNSum, GGNNSumNew, GGNNMeanResidual, \
+    GGNNMeanMixedResidual
 from downstream.model.devign.trainer import train
 from downstream.model.devign.devign_utils import tally_param, debug
 from downstream.model.devign.devign_global_flag import global_cuda_device
@@ -22,7 +23,7 @@ if __name__ == '__main__':
     np.random.seed(1000)
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_type', type=str, help='Type of the model (devign/ggnn)',
-                        choices=['devign', 'ggnn', 'ggnn_new'], default='devign')
+                        choices=['devign', 'ggnn', 'ggnn_new', 'ggnn_res', 'ggnn_mixed_res'], default='devign')
     parser.add_argument('--dataset', type=str, required=True, help='Name of the dataset for experiment.')
     parser.add_argument('--input_dir', type=str, required=True, help='Input Directory of the parser')
     parser.add_argument('--node_tag', type=str, help='Name of the node feature.', default='node_features')
@@ -60,9 +61,9 @@ if __name__ == '__main__':
         file = open(processed_data_path, 'wb')
         pickle.dump(dataset, file)
         file.close()
-    assert args.feature_size == dataset.feature_size, \
-        f'Dataset contains different feature vector ({dataset.feature_size}) than argument feature size ({args.feature_size}). ' \
-        'Either change the feature vector size in argument, or provide different dataset.'
+    # assert args.feature_size == dataset.feature_size, \
+    #     f'Dataset contains different feature vector ({dataset.feature_size}) than argument feature size ({args.feature_size}). ' \
+    #     'Either change the feature vector size in argument, or provide different dataset.'
     if args.model_type == 'ggnn':
         model = GGNNSum(input_dim=dataset.feature_size, output_dim=args.graph_embed_size,
                         num_steps=args.num_steps, max_edge_types=dataset.max_edge_type)
@@ -75,6 +76,9 @@ if __name__ == '__main__':
     elif args.model_type == 'ggnn_res':
         model = GGNNMeanResidual(input_dim=dataset.feature_size, output_dim=args.graph_embed_size,
                                  num_steps=args.num_steps, max_edge_types=dataset.max_edge_type)
+    elif args.model_type == 'ggnn_mixed_res':
+        model = GGNNMeanMixedResidual(input_dim=args.feature_size, output_dim=args.graph_embed_size,
+                                      num_steps=args.num_steps, max_edge_types=dataset.max_edge_type)
     else:
         raise ValueError(f'Unsupported model_type: {args.model_type}')
 

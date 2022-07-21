@@ -133,7 +133,43 @@ class GGNNMeanResidual(nn.Module):
     def forward(self, batch, cuda=False):
         graph, features, edge_types = batch.get_network_inputs(cuda=cuda)
         outputs = self.ggnn.forward(graph, features, edge_types)
-        h_i, lens = batch.de_batchify_graphs(outputs)
+        output_res_features = torch.cat((outputs, features), dim=1)
+        h_i, lens = batch.de_batchify_graphs(output_res_features)
+        mask = make_mask_from_lens(lens)
+        classification_features = mask_mean(h_i, mask, dim=1)
+        result, result_labels = self.classifier(classification_features)
+        # result, result_labels = self.classifier(h_i.mean(dim=1))
+        # ggnn_sum = self.classifier(h_i.mean(dim=1))         # Note: Here we modify 'sum' to 'mean'
+        # result = self.sigmoid(ggnn_sum).squeeze(dim=-1)
+        return result
+
+class GGNNMeanMixedResidual(nn.Module):
+    def __init__(self, input_dim, output_dim, max_edge_types, num_steps=8, res_feature_dim=768):
+        super(GGNNMeanMixedResidual, self).__init__()
+        self.inp_dim = input_dim
+        self.out_dim = output_dim
+        self.res_feature_dim = res_feature_dim
+        self.max_edge_types = max_edge_types
+        self.num_timesteps = num_steps
+        self.ggnn = GatedGraphConv(in_feats=input_dim, out_feats=output_dim, n_steps=num_steps,
+                                   n_etypes=max_edge_types)
+        self.classifier = LinearSigmoidClassifier(output_dim+res_feature_dim,
+                                                  hidden_dims=[256],
+                                                  activations=['relu'],
+                                                  dropouts=[0.3],
+                                                  ahead_feature_dropout=0.3,
+                                                  out_dim=1) # nn.Linear(in_features=output_dim, out_features=1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, batch, cuda=False):
+        graph, features, edge_types = batch.get_network_inputs(cuda=cuda)
+        graph_features, mixed_res_features = features[:, :self.inp_dim], features[:, self.inp_dim:]
+        assert mixed_res_features.size(1) == self.res_feature_dim
+
+        outputs = self.ggnn.forward(graph, graph_features, edge_types)
+        output_res_features = torch.cat((outputs, mixed_res_features), dim=1)
+
+        h_i, lens = batch.de_batchify_graphs(output_res_features)
         mask = make_mask_from_lens(lens)
         classification_features = mask_mean(h_i, mask, dim=1)
         result, result_labels = self.classifier(classification_features)
