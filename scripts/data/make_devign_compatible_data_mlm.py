@@ -17,11 +17,11 @@ from utils.file import dump_pickle, load_json, load_pickle
 # Stage 1: Extract MLM node features
 
 model_dump_base_path = '/data1/zhijietang/vul_data/run_logs/pretrain/15'
-data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/small/random_split/split_0'
+data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/small/random_split/split_1'
 # data_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_vol_data/'
 data_file_name = 'test.json'
 # data_file_name = 'packed_vol_69.pkl'
-target_dump_path = '/data1/zhijietang/vul_data/datasets/reveal/small/devign/mlm_ver15_e9/rs_0/test.pkl'
+target_dump_path = '/data1/zhijietang/vul_data/datasets/reveal/small/devign/mlm_ver15_e9/rs_1/test.pkl'
 model_name = 'microsoft/codebert-base'
 load_model_name = 'model_epoch_9.tar.gz'
 
