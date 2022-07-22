@@ -144,10 +144,15 @@ class CodeObjectiveTrainer(Model):
             }
         elif forward_type == 'line_features':
             encoded_code_outputs = self.embed_encode_code(code)
-            code_token_features, code_token_mask = encoded_code_outputs['outputs'], encoded_code_outputs['mask']
+            # 7.22 Fix grad mismatch bug: Forget to drop tokenizer tokens.
+            code_token_features, code_token_mask = self.drop_tokenizer_special_tokens(
+                encoded_code_outputs['outputs'],
+                encoded_code_outputs['mask']
+            )
             line_features, line_mask = self.line_extractor(code_token_features, code_token_mask, line_idxes, vertice_num)
             return {
                 'line_features': line_features,
+                'vertice_num': vertice_num,
                 'meta_data': meta_data
             }
         else:
@@ -162,10 +167,15 @@ class CodeObjectiveTrainer(Model):
                               vertice_num: Optional[torch.Tensor] = None,
                               **kwargs):
         encoded_code_outputs = self.embed_encode_code(code)
-        code_token_features, code_token_mask = encoded_code_outputs['outputs'], encoded_code_outputs['mask']
+        # 7.22 Fix grad mismatch bug: Forget to drop tokenizer tokens.
+        code_token_features, code_token_mask = self.drop_tokenizer_special_tokens(
+            encoded_code_outputs['outputs'],
+            encoded_code_outputs['mask']
+        )
         line_features, line_mask = line_extractor(code_token_features, code_token_mask, line_idxes, vertice_num)
         return {
             'node_features': line_features,
+            'vertice_num': vertice_num,
             'meta_data': meta_data
         }
 
