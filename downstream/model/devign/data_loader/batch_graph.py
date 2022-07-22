@@ -8,8 +8,9 @@ class BatchGraph:
         self.number_of_nodes = 0
         self.graphid_to_nodeids = {}
         self.num_of_subgraphs = 0
+        self.raw_codes = []
 
-    def add_subgraph(self, _g):
+    def add_subgraph(self, _g, code=None):
         assert isinstance(_g, DGLGraph)
         num_new_nodes = _g.number_of_nodes()
         self.graphid_to_nodeids[self.num_of_subgraphs] = torch.LongTensor(
@@ -21,6 +22,7 @@ class BatchGraph:
         self.graph.add_edges(sources, dests, data=_g.edata)
         self.number_of_nodes += num_new_nodes
         self.num_of_subgraphs += 1
+        self.raw_codes.append(code)
 
     def cuda(self, device):
         self.graph = self.graph.to(device)
@@ -48,12 +50,18 @@ class BatchGraph:
 
 
 class GGNNBatchGraph(BatchGraph):
-    def get_network_inputs(self, cuda=False, device=None):
+    def get_network_inputs(self, cuda=False, device=None, ret_code=False):
         features = self.graph.ndata['features']
         edge_types = self.graph.edata['etype']
         if cuda:
             self.cuda(device=device)
-            return self.graph, features.cuda(device=device), edge_types.cuda(device=device)
+            ret_items = [self.graph, features.cuda(device=device), edge_types.cuda(device=device)]
+            if ret_code:
+                ret_items.append(self.raw_codes)
+            return ret_items
         else:
-            return self.graph, features, edge_types
+            ret_items = [self.graph, features, edge_types]
+            if ret_code:
+                ret_items.append(self.raw_codes)
+            return ret_items
         pass

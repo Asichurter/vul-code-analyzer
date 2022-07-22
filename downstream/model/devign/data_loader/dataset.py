@@ -118,7 +118,7 @@ class DataSet:
         labels = [e.target for e in taken_entries]
         batch_graph = GGNNBatchGraph()
         for entry in taken_entries:
-            batch_graph.add_subgraph(copy.deepcopy(entry.graph))
+            batch_graph.add_subgraph(copy.deepcopy(entry.graph), entry.raw_code)
         return batch_graph, torch.FloatTensor(labels)
 
     def get_next_train_batch(self):
