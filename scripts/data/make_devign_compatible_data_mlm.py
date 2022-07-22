@@ -17,11 +17,11 @@ from utils.file import dump_pickle, load_json, load_pickle
 # Stage 1: Extract MLM node features
 
 model_dump_base_path = '/data1/zhijietang/vul_data/run_logs/pretrain/15'
-data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/small/random_split/split_1'
+data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/small/random_split/split_0'
 # data_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_vol_data/'
 data_file_name = 'test.json'
 # data_file_name = 'packed_vol_69.pkl'
-target_dump_path = '/data1/zhijietang/vul_data/datasets/reveal/small/devign/mlm_ver15_e9/rs_1/test.pkl'
+target_dump_path = '/data1/zhijietang/vul_data/datasets/reveal/small/devign/mlm_ver15_e9/rs_0/test.pkl'
 model_name = 'microsoft/codebert-base'
 load_model_name = 'model_epoch_9.tar.gz'
 
@@ -51,7 +51,7 @@ overwrite_reader_config = {
     'code_max_tokens': max_len,
     'code_tokenizer': {'max_length': max_len},
     'identifier_key': None,
-    'meta_data_keys': {'edges': 'edges', 'vulnerable': 'label', 'file': 'file'}
+    'meta_data_keys': {'edges': 'edges', 'vulnerable': 'label', 'file': 'file', 'code': 'code'}
 }
 
 if __name__ == '__main__':
@@ -86,7 +86,8 @@ if __name__ == '__main__':
                     'target': pdg_outputs['meta_data'][j]['label'], # label
                     'node_count': line_count,
                     'graph': adapt_devign_edge_format(pdg_outputs['meta_data'][j]['edges'], line_count),
-                    'id': pdg_outputs['meta_data'][j]['file']
+                    'id': pdg_outputs['meta_data'][j]['file'],
+                    'code': pdg_outputs['meta_data'][j]['code']
                 }
                 target_pdg_data.append(pdg_obj)
 
