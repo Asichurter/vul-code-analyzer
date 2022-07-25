@@ -115,6 +115,13 @@ if __name__ == '__main__':
     model.cuda(global_cuda_device)
     loss_function = BCELoss(reduction='sum')
     optim = Adam(model.parameters(), lr=args.lr, weight_decay=0.0001)
+
+    if args.model_type == 'ggnn_end2end':
+        # Add parameters of line feature extractor to optimizer
+        optim.add_param_group({
+            'params': model.feature_extractor._model.parameters()
+        })
+
     train(model=model, dataset=dataset, max_steps=1000000, dev_every=128,
           loss_function=loss_function, optimizer=optim,
           save_path=model_dir + f'/{args.model_type}', max_patience=100, log_every=None)
