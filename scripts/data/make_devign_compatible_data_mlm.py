@@ -17,11 +17,11 @@ from utils.file import dump_pickle, load_json, load_pickle
 # Stage 1: Extract MLM node features
 
 model_dump_base_path = '/data1/zhijietang/vul_data/run_logs/pretrain/15'
-data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/small/random_split/split_0'
+data_base_path = '/data1/zhijietang/vul_data/datasets/reveal/small/random_split/split_4'
 # data_base_path = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_vol_data/'
-data_file_name = 'test.json'
+# data_file_name = 'train.json'
 # data_file_name = 'packed_vol_69.pkl'
-target_dump_path = '/data1/zhijietang/vul_data/datasets/reveal/small/devign/mlm_ver15_e9/rs_0/test.pkl'
+target_dump_base_path = '/data1/zhijietang/vul_data/datasets/reveal/small/devign/mlm_ver15_e9/rs_4/'
 model_name = 'microsoft/codebert-base'
 load_model_name = 'model_epoch_9.tar.gz'
 
@@ -63,35 +63,40 @@ if __name__ == '__main__':
 
     model: CodeObjectiveTrainer = Model.from_archive(path_join(model_dump_base_path, load_model_name))
 
-    data_loader = MultiProcessDataLoader(reader, path_join(data_base_path, data_file_name),
-                                         batch_size=batch_size, shuffle=True, cuda_device=cuda_device)
-    data_loader.index_with(model.vocab)
 
-    if cuda_device != -1:
-        model = model.cuda(cuda_device)
-        torch.cuda.set_device(cuda_device)
+    for data_split in ['train', 'validate', 'test']:
+        print(data_split)
+        data_file_name = data_split + '.json'
+        data_loader = MultiProcessDataLoader(reader, path_join(data_base_path, data_file_name),
+                                             batch_size=batch_size, shuffle=True, cuda_device=cuda_device)
+        data_loader.index_with(model.vocab)
 
-    line_extractor = AvgLineExtractor(max_lines)
+        if cuda_device != -1:
+            model = model.cuda(cuda_device)
+            torch.cuda.set_device(cuda_device)
 
-    target_pdg_data = []
-    with torch.no_grad():
-        model.eval()
-        for i, batch in enumerate(tqdm(data_loader)):
-            pdg_outputs = model.extract_line_features(line_extractor=line_extractor ,**batch)
-            batch_len = len(pdg_outputs['node_features'])
-            for j in range(batch_len):
-                line_count = batch['vertice_num'][j].item()
-                pdg_obj = {
-                    'node_features': pdg_outputs['node_features'][j,:line_count].detach().cpu(),
-                    'target': pdg_outputs['meta_data'][j]['label'], # label
-                    'node_count': line_count,
-                    'graph': adapt_devign_edge_format(pdg_outputs['meta_data'][j]['edges'], line_count),
-                    'id': pdg_outputs['meta_data'][j]['file'],
-                    'code': pdg_outputs['meta_data'][j]['code']
-                }
-                target_pdg_data.append(pdg_obj)
+        line_extractor = AvgLineExtractor(max_lines)
 
-    dump_pickle(target_pdg_data, target_dump_path)
+        target_pdg_data = []
+        with torch.no_grad():
+            model.eval()
+            for i, batch in enumerate(tqdm(data_loader)):
+                pdg_outputs = model.extract_line_features(line_extractor=line_extractor ,**batch)
+                batch_len = len(pdg_outputs['node_features'])
+                for j in range(batch_len):
+                    line_count = batch['vertice_num'][j].item()
+                    pdg_obj = {
+                        'node_features': pdg_outputs['node_features'][j,:line_count].detach().cpu(),
+                        'target': pdg_outputs['meta_data'][j]['label'], # label
+                        'node_count': line_count,
+                        'graph': adapt_devign_edge_format(pdg_outputs['meta_data'][j]['edges'], line_count),
+                        'id': pdg_outputs['meta_data'][j]['file'],
+                        'code': pdg_outputs['meta_data'][j]['code']
+                    }
+                    target_pdg_data.append(pdg_obj)
+
+        target_dump_path = os.path.join(target_dump_base_path, data_split+'.pkl')
+        dump_pickle(target_pdg_data, target_dump_path)
 
 
 # Stage 2: Copy graph structure from predicted graph of full pre-trained model
