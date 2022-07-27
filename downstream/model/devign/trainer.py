@@ -65,13 +65,15 @@ def evaluate_metrics(model, loss_function, num_batches, data_iter):
     pass
 
 
-def train(model, dataset, max_steps, dev_every, loss_function, optimizer, save_path, log_every=50, max_patience=5):
+def train(model, dataset, max_steps, dev_every, loss_function, optimizer, save_path, log_every=50, max_patience=5, do_val=True):
     debug('Start Training')
     train_losses = []
     best_model = None
     patience_counter = 0
     best_f1 = 0
     try:
+        train_stat_preds = []
+        train_stat_labels = []
         for step_count in range(max_steps):
             model.train()
             model.zero_grad()
@@ -81,27 +83,43 @@ def train(model, dataset, max_steps, dev_every, loss_function, optimizer, save_p
             graph.cuda(global_cuda_device)
             predictions = model(graph, cuda=True)
             batch_loss = loss_function(predictions, targets)
+
+            predict_labels = (predictions > 0.5).long().detach().cpu().tolist()
+            labels = targets.detach().cpu().tolist()
+            train_stat_preds.extend(predict_labels)
+            train_stat_labels.extend(labels)
             if log_every is not None and (step_count % log_every == log_every - 1):
-                debug('Step %d\t\tTrain Loss %10.3f' % (step_count, batch_loss.detach().cpu().item()))
+                debug('Step %d\t\tTrain Loss %10.3f Train F1 %.2f' % (step_count, batch_loss.detach().cpu().item(), f1_score(train_stat_labels, train_stat_preds) * 100))
+                train_stat_preds.clear()
+                train_stat_labels.clear()
             train_losses.append(batch_loss.detach().cpu().item())
             batch_loss.backward()
             optimizer.step()
             if step_count % dev_every == (dev_every - 1):
-                valid_loss, valid_f1 = evaluate_loss(model, loss_function, dataset.initialize_valid_batch(),
-                                                     dataset.get_next_valid_batch)
-                if valid_f1 > best_f1:
-                    patience_counter = 0
-                    best_f1 = valid_f1
-                    best_model = copy.deepcopy(model.state_dict())
-                    _save_file = open(save_path + '-model.bin', 'wb')
-                    torch.save(model.state_dict(), _save_file)
-                    _save_file.close()
+                if do_val:
+                    valid_loss, valid_f1 = evaluate_loss(model, loss_function, dataset.initialize_valid_batch(),
+                                                         dataset.get_next_valid_batch)
+                    if valid_f1 > best_f1:
+                        patience_counter = 0
+                        best_f1 = valid_f1
+                        best_model = copy.deepcopy(model.state_dict())
+                        _save_file = open(save_path + '-model.bin', 'wb')
+                        torch.save(model.state_dict(), _save_file)
+                        _save_file.close()
+                    else:
+                        patience_counter += 1
+                    debug('Step %d\t\tTrain Loss %10.3f\tTrain f1 %5.2f\tValid Loss%10.3f\tf1: %5.2f\tPatience %d' % (
+                        step_count, np.mean(train_losses).item(),
+                        f1_score(train_stat_labels, train_stat_preds) * 100, valid_loss, valid_f1, patience_counter))
+                    debug('=' * 100)
                 else:
-                    patience_counter += 1
-                debug('Step %d\t\tTrain Loss %10.3f\tValid Loss%10.3f\tf1: %5.2f\tPatience %d' % (
-                    step_count, np.mean(train_losses).item(), valid_loss, valid_f1, patience_counter))
-                debug('=' * 100)
+                    debug('Step %d\t\tTrain Loss %10.3f\tTrain f1 %5.2f' % (
+                        step_count, np.mean(train_losses).item(),
+                        f1_score(train_stat_labels, train_stat_preds) * 100))
+                    debug('=' * 100)
                 train_losses = []
+                train_stat_preds.clear()
+                train_stat_labels.clear()
                 if patience_counter == max_patience:
                     break
     except KeyboardInterrupt:
@@ -114,5 +132,5 @@ def train(model, dataset, max_steps, dev_every, loss_function, optimizer, save_p
     _save_file.close()
     acc, pr, rc, f1 = evaluate_metrics(model, loss_function, dataset.initialize_test_batch(),
                                        dataset.get_next_test_batch)
-    debug('%s\tTest Accuracy: %0.2f\tPrecision: %0.2f\tRecall: %0.2f\tF1: %0.2f' % (save_path, acc, pr, rc, f1))
+    debug('%s\tTest Accuracy: %0.2f\tPrecision: %0.2f\tRecall: %0.2f\tF1: %0.2f (val f1=%5.2f)' % (save_path, acc, pr, rc, f1, best_f1))
     debug('=' * 100)
