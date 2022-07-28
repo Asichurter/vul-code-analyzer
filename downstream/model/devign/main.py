@@ -17,12 +17,37 @@ from torch.optim import Adam
 from downstream.model.devign.data_loader.dataset import DataSet
 from downstream.model.devign.modules.model import DevignModel, GGNNSum, GGNNSumNew, GGNNMeanResidual, \
     GGNNMeanMixedResidual
-from downstream.model.devign.modules.e2e_model import GGNNMeanEnd2End, GGNNMeanEnd2EndV2
+from downstream.model.devign.modules.e2e_model import GGNNMeanEnd2End, GGNNMeanEnd2EndV2, NodeMean
 from downstream.model.devign.trainer import train
 from downstream.model.devign.devign_utils import tally_param, debug
 from downstream.model.devign.devign_global_flag import global_cuda_device
 from utils.stat import stat_model_param_number
 from utils.seed import seed_everything
+
+def create_node_feature_extractor():
+    model_path = '/data1/zhijietang/vul_data/run_logs/pretrain/15/model.tar.gz'
+    reader_config_path = '/data1/zhijietang/vul_data/run_logs/pretrain/15/config.json'
+    overwrite_reader_config = {
+        'type': 'raw_pdg_predict',
+        'max_lines': 50,
+        'code_max_tokens': 256,
+        'code_tokenizer': {'max_length': 256},
+        'identifier_key': None,
+        # 'meta_data_keys': {'edges': 'edges', 'vulnerable': 'label', 'file': 'file'}
+    }
+    delete_reader_config = {
+        'from_raw_data': 1,
+        'pdg_max_vertice': 1
+    }
+    line_extractor = AvgLineExtractor(max_lines=50)
+    # extractor = MLMLineExtractor(model_path, reader_config_path, line_extractor,
+    #                              overwrite_reader_config, delete_reader_config,
+    #                              cuda_device=global_cuda_device,
+    #                              frozen=False)
+    extractor = MLMLineExtractorV2(model_path, reader_config_path, line_extractor,
+                                   overwrite_reader_config, delete_reader_config,
+                                   cuda_device=global_cuda_device)
+    return extractor
 
 
 if __name__ == '__main__':
@@ -31,7 +56,8 @@ if __name__ == '__main__':
     seed_everything(1000)
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_type', type=str, help='Type of the model (devign/ggnn)',
-                        choices=['devign', 'ggnn', 'ggnn_new', 'ggnn_res', 'ggnn_mixed_res', 'ggnn_end2end'], default='devign')
+                        choices=['devign', 'ggnn', 'ggnn_new', 'ggnn_res', 'ggnn_mixed_res',
+                                 'ggnn_end2end', 'node_mean'], default='devign')
     parser.add_argument('--dataset', type=str, required=True, help='Name of the dataset for experiment.')
     parser.add_argument('--input_dir', type=str, required=True, help='Input Directory of the parser')
     parser.add_argument('--node_tag', type=str, help='Name of the node feature.', default='node_features')
@@ -94,33 +120,17 @@ if __name__ == '__main__':
         model = GGNNMeanMixedResidual(input_dim=args.feature_size, output_dim=args.graph_embed_size,
                                       num_steps=args.num_steps, max_edge_types=dataset.max_edge_type)
     elif args.model_type == 'ggnn_end2end':
-        model_path = '/data1/zhijietang/vul_data/run_logs/pretrain/15/model.tar.gz'
-        reader_config_path = '/data1/zhijietang/vul_data/run_logs/pretrain/15/config.json'
-        overwrite_reader_config = {
-            'type': 'raw_pdg_predict',
-            'max_lines': 50,
-            'code_max_tokens': 256,
-            'code_tokenizer': {'max_length': 256},
-            'identifier_key': None,
-            # 'meta_data_keys': {'edges': 'edges', 'vulnerable': 'label', 'file': 'file'}
-        }
-        delete_reader_config = {
-            'from_raw_data': 1,
-            'pdg_max_vertice': 1
-        }
-        line_extractor = AvgLineExtractor(max_lines=50)
-        # extractor = MLMLineExtractor(model_path, reader_config_path, line_extractor,
-        #                              overwrite_reader_config, delete_reader_config,
-        #                              cuda_device=global_cuda_device,
-        #                              frozen=False)
-        extractor = MLMLineExtractorV2(model_path, reader_config_path, line_extractor,
-                                     overwrite_reader_config, delete_reader_config,
-                                     cuda_device=global_cuda_device)
+        extractor = create_node_feature_extractor()
         model = GGNNMeanEnd2EndV2(extractor,
                                   input_dim=args.feature_size, output_dim=args.graph_embed_size,
                                   num_steps=args.num_steps, max_edge_types=dataset.max_edge_type,
                                   residual_forward=args.res_forward,
                                   dynamic_node_features=args.dynamic_node)
+    elif args.model_type == 'node_mean':
+        extractor = create_node_feature_extractor()
+        model = NodeMean(extractor,
+                         input_dim=args.feature_size, output_dim=args.graph_embed_size,
+                         num_steps=args.num_steps, max_edge_types=dataset.max_edge_type)
     else:
         raise ValueError(f'Unsupported model_type: {args.model_type}')
 
