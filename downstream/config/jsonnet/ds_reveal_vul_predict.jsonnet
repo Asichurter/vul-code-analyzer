@@ -11,16 +11,16 @@ local code_namespace = "code_tokens";
 
 local mlm_mask_token = "<MLM>";
 local additional_special_tokens = [mlm_mask_token];     # Add this special token to avoid embedding size mismatch
-local split_index = 0;
+local split_index = 1;
 
 local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
 
 {
     extra: {
-        version: 1003,
+        version: 1005,
         decs: {
-            main: "reveal small-256, random_split 0 + pretrain Ver.20, epoch=best (mlm+10epoch pdg)",
-            embedder: "Fixed embedder after loading",
+            main: "reveal small-256, random_split 1 + pretrain Ver.15, epoch=9 (mlm)",
+            model: "token-mean as encoder",
             batch: "train batch_size = 64",
         },
     },
@@ -71,7 +71,7 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
             code_tokens: {
               type: "pretrained_transformer",
               model_name: pretrained_model,
-              train_parameters: false,
+              train_parameters: true,
               tokenizer_kwargs: {
                 additional_special_tokens: additional_special_tokens
              }
@@ -83,9 +83,9 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
             input_dim: code_embed_dim,
         },
         code_feature_squeezer: {
-            type: "cls_pooler",
-            embedding_dim: code_encode_dim,
-            cls_is_last_token: false,
+            type: "bag_of_embeddings",
+            embedding_dim: code_embed_dim,
+            averaged: true
         },
         loss_func: {
             type: "bce"
@@ -127,7 +127,7 @@ local cv_base_path = cv_data_base_path + "split_" + split_index + "/";
     validation_metric: "+f1",
     optimizer: {
       type: "adam",
-      lr: 5e-5
+      lr: 1e-5
     },
     num_gradient_accumulation_steps: 1,
     callbacks: [
