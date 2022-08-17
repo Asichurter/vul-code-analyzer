@@ -25,10 +25,13 @@ data_file_name = args.data_file_name
 model_name = args.model_name
 cuda_device = args.cuda
 subset = args.subset
+subfolder = args.subfolder
+run_log_dir = args.run_log_dir
+split = args.split
 
-data_base_path = f"/data1/zhijietang/vul_data/datasets/reveal/small/random_split/{subset}/"
+data_base_path = f"/data1/zhijietang/vul_data/datasets/reveal/{subfolder}/random_split/{subset}/"
 data_file_path = data_base_path + data_file_name
-model_base_path = f'/data1/zhijietang/vul_data/run_logs/reveal_vul_predict/{version}/'
+model_base_path = f'/data1/zhijietang/vul_data/run_logs/{run_log_dir}/{version}/rs_{split}/'
 model_path = model_base_path + model_name
 
 batch_size = 32
@@ -47,10 +50,11 @@ def predict_on_dataloader(model, data_loader) -> Tuple[List, List, List]:
             all_ref.extend(batch['label'].cpu().detach().squeeze().tolist())
     return all_ref, all_pred, all_score
 
-mylogger.info('evaluate', f'cv = {subset}')
-mylogger.info('evaluate', f'ver = {version}')
+mylogger.info('evaluate', f'version = {version}')
+mylogger.info('evaluate', f'cv = {split}')
 mylogger.info('evaluate', f'model = {model_name}')
 mylogger.info('evaluate', f'data_file = {data_file_name}')
+mylogger.info('evaluate', f'data_base_path = {data_base_path}')
 
 dataset_reader = build_dataset_reader_from_config(
     config_path=model_base_path + 'config.json',

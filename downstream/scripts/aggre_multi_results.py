@@ -8,16 +8,20 @@ from utils.file import load_json
 
 args = read_aggre_eval_results_args()
 
-run_log_base_path = f'/data1/zhijietang/vul_data/run_logs/{args.run_log_dir}/'
-versions = args.versions.split(',')
+run_log_base_path = f'/data1/zhijietang/vul_data/run_logs/{args.run_log_dir}/{args.version}'
 metric_keys = ['Accuracy', 'AUC', 'Precision', 'Recall', 'F1-Score']
 title = args.title
+splits = ['rs_0', 'rs_1', 'rs_2', 'rs_3', 'rs_4']
 
 metrics = {k:[] for k in metric_keys}
-for ver in versions:
-    result_path = os.path.join(run_log_base_path, str(ver), 'eval_results.json')
+for split in splits:
+    result_path = os.path.join(run_log_base_path, split, 'eval_results.json')
     # Only load first eval result item
-    eval_results = load_json(result_path)[0]
+    try:
+        eval_results = load_json(result_path)[0]
+    except FileNotFoundError:
+        print(f'# {split} not found, skip')
+        continue
 
     for key in metric_keys:
         try:
