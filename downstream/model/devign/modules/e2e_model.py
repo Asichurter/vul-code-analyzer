@@ -9,8 +9,9 @@ from torch.nn.parameter import Parameter
 
 from downstream.model.devign.modules.classfier import LinearSigmoidClassifier
 from downstream.model.devign.devign_utils import make_mask_from_lens, mask_mean
-from downstream.model.mlm_line_feature_extractor import MLMLineExtractor
-from downstream.model.mlm_line_feature_extractor_v2 import MLMLineExtractorV2
+from downstream.model.feature_extraction.mlm_line_feature_extractor import MLMLineExtractor
+from downstream.model.feature_extraction.mlm_line_feature_extractor_v2 import MLMLineExtractorV2
+from downstream.model.feature_extraction.cls_feature_extractor import ClsExtractorV2
 
 class GGNNMeanEnd2End(nn.Module):
     def __init__(self,
@@ -132,7 +133,6 @@ class GGNNMeanEnd2EndV2(nn.Module):
         return result
 
 
-
 class NodeMean(nn.Module):
     def __init__(self,
                  line_extractor: MLMLineExtractorV2,
@@ -143,14 +143,6 @@ class NodeMean(nn.Module):
         self.max_edge_types = max_edge_types
         self.num_timesteps = num_steps
         self.feature_extractor = line_extractor
-        # self.residual_forward = residual_forward
-        # self.dynamic_node_features = dynamic_node_features
-        # self.ggnn = GatedGraphConv(in_feats=input_dim, out_feats=output_dim, n_steps=num_steps,
-        #                            n_etypes=max_edge_types)
-        # if residual_forward:
-        #     feature_dim = input_dim + output_dim
-        # else:
-        #     feature_dim = output_dim
         feature_dim = input_dim
         self.classifier = LinearSigmoidClassifier(feature_dim,
                                                   hidden_dims=[256],
@@ -176,6 +168,33 @@ class NodeMean(nn.Module):
         mask = make_mask_from_lens(lens)
         classification_features = mask_mean(h_i, mask, dim=1)
         result, result_labels = self.classifier(classification_features)
+        return result
+
+
+class ClsPooler(nn.Module):
+    def __init__(self,
+                 cls_extractor: ClsExtractorV2,
+                 input_dim, output_dim, max_edge_types, num_steps=8):
+        super(ClsPooler, self).__init__()
+        self.inp_dim = input_dim
+        self.out_dim = output_dim
+        self.max_edge_types = max_edge_types
+        self.num_timesteps = num_steps
+        self.feature_extractor = cls_extractor
+        feature_dim = input_dim
+        self.classifier = LinearSigmoidClassifier(feature_dim,
+                                                  hidden_dims=[256],
+                                                  activations=['relu'],
+                                                  dropouts=[0.3],
+                                                  ahead_feature_dropout=0.3,
+                                                  out_dim=1) # nn.Linear(in_features=output_dim, out_features=1)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, batch, cuda=False):
+        graph, raw_node_features, edge_types, codes = batch.get_network_inputs(cuda=cuda, ret_code=True)
+        cls_feature_outputs = self.feature_extractor.predict_batch_with_grad(codes, separate_instances=False)
+        cls_features = cls_feature_outputs['cls_features']
+        result, result_labels = self.classifier(cls_features)
         return result
 
 

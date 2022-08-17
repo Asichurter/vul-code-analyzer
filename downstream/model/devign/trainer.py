@@ -8,17 +8,18 @@ from tqdm import tqdm
 
 from downstream.model.devign.devign_utils import debug
 from downstream.model.devign.devign_global_flag import global_cuda_device
+from utils.file import load_json, dump_json
 
 
-def evaluate_loss(model, loss_function, num_batches, data_iter, cuda=False):
+def evaluate_loss(model, loss_function, num_batches, data_iter, cuda_device=False):
     model.eval()
     with torch.no_grad():
         _loss = []
         all_predictions, all_targets = [], []
         for _ in range(num_batches):
             graph, targets = data_iter()
-            targets = targets.cuda(global_cuda_device)
-            graph.cuda(global_cuda_device)
+            targets = targets.cuda(cuda_device)
+            graph.cuda(cuda_device)
             predictions = model(graph, cuda=True)
             batch_loss = loss_function(predictions, targets)
             _loss.append(batch_loss.detach().cpu().item())
@@ -36,15 +37,15 @@ def evaluate_loss(model, loss_function, num_batches, data_iter, cuda=False):
     pass
 
 
-def evaluate_metrics(model, loss_function, num_batches, data_iter):
+def evaluate_metrics(model, loss_function, num_batches, data_iter, cuda_device):
     model.eval()
     with torch.no_grad():
         _loss = []
         all_predictions, all_targets = [], []
         for _ in range(num_batches):
             graph, targets = data_iter()
-            targets = targets.cuda(global_cuda_device)
-            graph.cuda(global_cuda_device)
+            targets = targets.cuda(cuda_device)
+            graph.cuda(cuda_device)
             predictions = model(graph, cuda=True)
             batch_loss = loss_function(predictions, targets)
             _loss.append(batch_loss.detach().cpu().item())
@@ -65,7 +66,7 @@ def evaluate_metrics(model, loss_function, num_batches, data_iter):
     pass
 
 
-def train(model, dataset, max_steps, dev_every, loss_function, optimizer, save_path, log_every=50, max_patience=5, do_val=True):
+def train(model, dataset, max_steps, dev_every, loss_function, optimizer, save_path, cuda_device, log_every=50, max_patience=5, do_val=True, dump_key='default'):
     debug('Start Training')
     train_losses = []
     best_model = None
@@ -78,9 +79,9 @@ def train(model, dataset, max_steps, dev_every, loss_function, optimizer, save_p
             model.train()
             model.zero_grad()
             graph, targets = dataset.get_next_train_batch()
-            targets = targets.cuda(global_cuda_device)
+            targets = targets.cuda(cuda_device)
             # Fix cuda bug
-            graph.cuda(global_cuda_device)
+            graph.cuda(cuda_device)
             predictions = model(graph, cuda=True)
             batch_loss = loss_function(predictions, targets)
 
@@ -98,7 +99,7 @@ def train(model, dataset, max_steps, dev_every, loss_function, optimizer, save_p
             if step_count % dev_every == (dev_every - 1):
                 if do_val:
                     valid_loss, valid_f1 = evaluate_loss(model, loss_function, dataset.initialize_valid_batch(),
-                                                         dataset.get_next_valid_batch)
+                                                         dataset.get_next_valid_batch, cuda_device)
                     if valid_f1 > best_f1:
                         patience_counter = 0
                         best_f1 = valid_f1
@@ -131,6 +132,15 @@ def train(model, dataset, max_steps, dev_every, loss_function, optimizer, save_p
     torch.save(model.state_dict(), _save_file)
     _save_file.close()
     acc, pr, rc, f1 = evaluate_metrics(model, loss_function, dataset.initialize_test_batch(),
-                                       dataset.get_next_test_batch)
-    debug('%s\tTest Accuracy: %0.2f\tPrecision: %0.2f\tRecall: %0.2f\tF1: %0.2f (val f1=%5.2f)' % (save_path, acc, pr, rc, f1, best_f1))
+                                       dataset.get_next_test_batch, cuda_device)
+    result_str = '%s\tTest Accuracy: %0.2f\tPrecision: %0.2f\tRecall: %0.2f\tF1: %0.2f (val f1=%5.2f)' % (save_path, acc, pr, rc, f1, best_f1)
+    debug(result_str)
     debug('=' * 100)
+
+    result_file_path = '/data1/zhijietang/temp/devign_results.json'
+    results = load_json(result_file_path)
+    if dump_key not in results:
+        results[dump_key] = [result_str]
+    else:
+        results[dump_key].append(result_str)
+    dump_json(results, result_file_path)

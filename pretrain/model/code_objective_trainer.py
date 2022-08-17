@@ -155,6 +155,15 @@ class CodeObjectiveTrainer(Model):
                 'vertice_num': vertice_num,
                 'meta_data': meta_data
             }
+        elif forward_type == 'cls_features':
+            encoded_code_outputs = self.embed_encode_code(code)
+            # 7.22 Fix grad mismatch bug: Forget to drop tokenizer tokens.
+            code_token_features = encoded_code_outputs['outputs']
+            code_token_mask = encoded_code_outputs['mask']
+            return {
+                'cls_features': code_token_features[:,0],
+                'meta_data': meta_data
+            }
         else:
             raise ValueError(f'Unsupported forward type: {forward_type}')
 

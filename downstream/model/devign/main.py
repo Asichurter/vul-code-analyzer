@@ -3,11 +3,12 @@ import os
 import pickle
 import sys
 
-from downstream.model.mlm_line_feature_extractor import MLMLineExtractor
-from downstream.model.mlm_line_feature_extractor_v2 import MLMLineExtractorV2
-from pretrain import AvgLineExtractor
-
 sys.path.extend(['/data1/zhijietang/projects/vul-code-analyzer'])
+
+from downstream.model.feature_extraction.mlm_line_feature_extractor import MLMLineExtractor
+from downstream.model.feature_extraction.mlm_line_feature_extractor_v2 import MLMLineExtractorV2
+from downstream.model.feature_extraction.cls_feature_extractor import ClsExtractorV2
+from pretrain import AvgLineExtractor
 
 import numpy as np
 import torch
@@ -17,14 +18,14 @@ from torch.optim import Adam
 from downstream.model.devign.data_loader.dataset import DataSet
 from downstream.model.devign.modules.model import DevignModel, GGNNSum, GGNNSumNew, GGNNMeanResidual, \
     GGNNMeanMixedResidual
-from downstream.model.devign.modules.e2e_model import GGNNMeanEnd2End, GGNNMeanEnd2EndV2, NodeMean
+from downstream.model.devign.modules.e2e_model import GGNNMeanEnd2End, GGNNMeanEnd2EndV2, NodeMean, ClsPooler
 from downstream.model.devign.trainer import train
 from downstream.model.devign.devign_utils import tally_param, debug
-from downstream.model.devign.devign_global_flag import global_cuda_device
+# from downstream.model.devign.devign_global_flag import global_cuda_device
 from utils.stat import stat_model_param_number
 from utils.seed import seed_everything
 
-def create_node_feature_extractor():
+def create_node_feature_extractor(cuda_device):
     model_path = '/data1/zhijietang/vul_data/run_logs/pretrain/15/model.tar.gz'
     reader_config_path = '/data1/zhijietang/vul_data/run_logs/pretrain/15/config.json'
     overwrite_reader_config = {
@@ -46,9 +47,28 @@ def create_node_feature_extractor():
     #                              frozen=False)
     extractor = MLMLineExtractorV2(model_path, reader_config_path, line_extractor,
                                    overwrite_reader_config, delete_reader_config,
-                                   cuda_device=global_cuda_device)
+                                   cuda_device=cuda_device)
     return extractor
 
+def create_cls_feature_extractor(cuda_device):
+    model_path = '/data1/zhijietang/vul_data/run_logs/pretrain/15/model.tar.gz'
+    reader_config_path = '/data1/zhijietang/vul_data/run_logs/pretrain/15/config.json'
+    overwrite_reader_config = {
+        'type': 'raw_pdg_predict',
+        'max_lines': 50,
+        'code_max_tokens': 256,
+        'code_tokenizer': {'max_length': 256},
+        'identifier_key': None,
+        # 'meta_data_keys': {'edges': 'edges', 'vulnerable': 'label', 'file': 'file'}
+    }
+    delete_reader_config = {
+        'from_raw_data': 1,
+        'pdg_max_vertice': 1
+    }
+    extractor = ClsExtractorV2(model_path, reader_config_path,
+                               overwrite_reader_config, delete_reader_config,
+                               cuda_device=cuda_device)
+    return extractor
 
 if __name__ == '__main__':
     # torch.manual_seed(1000)
@@ -57,7 +77,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_type', type=str, help='Type of the model (devign/ggnn)',
                         choices=['devign', 'ggnn', 'ggnn_new', 'ggnn_res', 'ggnn_mixed_res',
-                                 'ggnn_end2end', 'node_mean'], default='devign')
+                                 'ggnn_end2end', 'node_mean', 'cls'], default='devign')
     parser.add_argument('--dataset', type=str, required=True, help='Name of the dataset for experiment.')
     parser.add_argument('--input_dir', type=str, required=True, help='Input Directory of the parser')
     parser.add_argument('--node_tag', type=str, help='Name of the node feature.', default='node_features')
@@ -74,9 +94,12 @@ if __name__ == '__main__':
     parser.add_argument('--dynamic_node', type=bool, help='Whether using dynamicn node features', default=True)
     parser.add_argument('--max_steps', type=int, default=1000000, help='Maximum training steps')
     parser.add_argument('--do_val', action='store_true', help='Do validation during training')
+    parser.add_argument('--dump_key', type=str, required=True, help='Key to store when dumping results')
+    parser.add_argument('--cuda', type=int, default=0, help='Cuda device')
 
     # parser.add_argument('--cuda', type=int, help='Cuda device', default=0)
     args = parser.parse_args()
+    cuda_device = args.cuda
 
     if args.feature_size > args.graph_embed_size:
         print('Warning!!! Graph Embed dimension should be at least equal to the feature dimension.\n'
@@ -120,17 +143,22 @@ if __name__ == '__main__':
         model = GGNNMeanMixedResidual(input_dim=args.feature_size, output_dim=args.graph_embed_size,
                                       num_steps=args.num_steps, max_edge_types=dataset.max_edge_type)
     elif args.model_type == 'ggnn_end2end':
-        extractor = create_node_feature_extractor()
+        extractor = create_node_feature_extractor(cuda_device)
         model = GGNNMeanEnd2EndV2(extractor,
                                   input_dim=args.feature_size, output_dim=args.graph_embed_size,
                                   num_steps=args.num_steps, max_edge_types=dataset.max_edge_type,
                                   residual_forward=args.res_forward,
                                   dynamic_node_features=args.dynamic_node)
     elif args.model_type == 'node_mean':
-        extractor = create_node_feature_extractor()
+        extractor = create_node_feature_extractor(cuda_device)
         model = NodeMean(extractor,
                          input_dim=args.feature_size, output_dim=args.graph_embed_size,
                          num_steps=args.num_steps, max_edge_types=dataset.max_edge_type)
+    elif args.model_type == 'cls':
+        extractor = create_cls_feature_extractor(cuda_device)
+        model = ClsPooler(extractor,
+                          input_dim=args.feature_size, output_dim=args.graph_embed_size,
+                          num_steps=args.num_steps, max_edge_types=dataset.max_edge_type)
     else:
         raise ValueError(f'Unsupported model_type: {args.model_type}')
 
@@ -139,7 +167,7 @@ if __name__ == '__main__':
     debug('#' * 100)
     stat_model_param_number(model)
     debug('#' * 100)
-    model.cuda(global_cuda_device)
+    model.cuda(cuda_device)
     loss_function = BCELoss(reduction='sum')
     optim = Adam(model.parameters(), lr=args.lr, weight_decay=0.0001)
 
@@ -153,4 +181,6 @@ if __name__ == '__main__':
     train(model=model, dataset=dataset, max_steps=args.max_steps, dev_every=128,
           loss_function=loss_function, optimizer=optim,
           save_path=model_dir + f'/{args.model_type}', max_patience=args.patience, log_every=None,
-          do_val=args.do_val)
+          do_val=args.do_val,
+          dump_key=args.dump_key,
+          cuda_device=cuda_device)
