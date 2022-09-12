@@ -12,7 +12,8 @@ def read_reveal_cv_train_from_config_args():
     parser.add_argument('-version', type=str, required=True, help='subfoler name under run log directory')
     parser.add_argument('-cv', type=int, default=5, help='number of cross-validation')
     parser.add_argument('-test_filenames', type=str, default='model.tar.gz', help='model file names after training, splitted by comma')
-    parser.add_argument('-eval_filename', type=str, default='evaluate_reveal.py', help='model file names after training, splitted by comma')
+    parser.add_argument('-eval_script', type=str, default='evaluate_reveal.py', help='model file names after training, splitted by comma')
+    parser.add_argument('-title', type=str, default='', help='title for reporting cv results')
     return parser.parse_args()
 
 def read_reveal_eval_args():
