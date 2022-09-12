@@ -39,12 +39,14 @@ for vol in os.listdir('/data1/zhijietang/vul_data/datasets/joern_vulberta/packed
     if 'debug' in vol:
         continue
     vol_num = vol[3:]
-    if int(vol_num) < 20:
+    if int(vol_num) >= 20:
         continue
     packed_data.clear()
     dump_packed_file_path = f'/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_vol_data/packed_vol_{vol_num}.pkl'
 
-    vol_base_path = f'/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_data/{vol}/'
+    # vol_base_path = f'/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_data/{vol}/'
+    vol_base_path = f'/data1/zhijietang/vul_data/datasets/docker/packed_data_jsons_new/{vol}/'
+    print(f'Reading {vol}')
     for item in tqdm(os.listdir(vol_base_path)):
         # start = time.time()
         data = load_json(os.path.join(vol_base_path, item))
