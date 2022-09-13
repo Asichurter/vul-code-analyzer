@@ -3,7 +3,7 @@ from typing import Dict, Tuple
 import torch
 
 from common.nn.loss_func import LossFunc
-from pretrain.comp.nn.utils import stat_true_count_in_batch_dim, sample_2D_mask_by_count_in_batch_dim
+from pretrain.comp.nn.utils import stat_true_count_in_batch_dim, sample_2D_mask_by_count_along_batch_dim
 from pretrain.comp.nn.loss_sampler.loss_sampler import LossSampler
 
 
@@ -75,7 +75,7 @@ class SeparatedBalancedLossSampler(LossSampler):
             edge_mask = (edge_matrix == 1)
 
             edge_count = stat_true_count_in_batch_dim(edge_mask)
-            sampled_non_edge_mask = sample_2D_mask_by_count_in_batch_dim(non_edge_mask, edge_count)
+            sampled_non_edge_mask = sample_2D_mask_by_count_along_batch_dim(non_edge_mask, edge_count)
             sampled_mask = sampled_non_edge_mask.bool() | edge_mask
             return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, sampled_mask), \
                    sampled_mask.view(bsz, 2, v_num, v_num)

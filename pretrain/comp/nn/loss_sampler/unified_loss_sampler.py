@@ -3,7 +3,7 @@ from typing import Dict, Tuple
 import torch
 
 from common.nn.loss_func import LossFunc
-from pretrain.comp.nn.utils import stat_true_count_in_batch_dim, sample_2D_mask_by_count_in_batch_dim
+from pretrain.comp.nn.utils import stat_true_count_in_batch_dim, sample_2D_mask_by_count_along_batch_dim
 from pretrain.comp.nn.loss_sampler.loss_sampler import LossSampler
 
 
@@ -79,7 +79,7 @@ class UnifiedBalancedLossSampler(LossSampler):
             # Count number of edges per instance in the batch.
             edge_count = stat_true_count_in_batch_dim(edge_mask)
 
-            sampled_non_edge_mask = sample_2D_mask_by_count_in_batch_dim(non_edge_mask, edge_count)
+            sampled_non_edge_mask = sample_2D_mask_by_count_along_batch_dim(non_edge_mask, edge_count)
             # We use all the edged pairs and sampled partial edged pairs to compute final loss.
             # W.r.t: len(edge) >= len(non_edge)
             sampled_mask = sampled_non_edge_mask.bool() | edge_mask
