@@ -10,6 +10,7 @@ from allennlp.data.fields import TextField, TensorField
 
 from common.modules.code_cleaner import CodeCleaner, TrivialCodeCleaner
 from utils.file import read_dumped
+from utils.pretrain_utils.mlm_mask_weight_gen import dispatch_mlm_weight_gen_method
 
 
 @DatasetReader.register('packed_line_pdg')
@@ -28,6 +29,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
                  only_keep_complete_lines: bool = True,
                  unified_label: bool = True,
                  from_raw_data: bool = True,
+                 mlm_sampling_weight_strategy: str = 'uniform',
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
@@ -44,6 +46,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
         self.only_keep_complete_lines = only_keep_complete_lines
         self.unified_label = unified_label
         self.from_raw_data = from_raw_data
+        self.mlm_sampling_weight_method = dispatch_mlm_weight_gen_method(mlm_sampling_weight_strategy)
 
         self.actual_read_samples = 0
 
@@ -177,12 +180,15 @@ class PackedLinePDGDatasetReader(DatasetReader):
         if line_count == 1:
             return False, Instance({})
 
+        mlm_sampling_weights, _ = self.mlm_sampling_weight_method(code, tokenized_code)
+
         self._check_data_correctness(code, tokenized_code, token_line_idxes, edges)
         fields = {
             'code': TextField(tokenized_code, self.code_token_indexers),
             'line_idxes': TensorField(token_line_idxes),
             'edges': TensorField(edge_matrix),
             'vertice_num': TensorField(torch.Tensor([line_count])), # num. of line is vertice num.
+            'mlm_sampling_weights': TensorField(mlm_sampling_weights),
         }
 
         return True, Instance(fields)

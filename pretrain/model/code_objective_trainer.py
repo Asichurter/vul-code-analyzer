@@ -117,6 +117,7 @@ class CodeObjectiveTrainer(Model):
                 line_idxes: torch.Tensor,
                 vertice_num: torch.Tensor,
                 edges: Optional[torch.Tensor] = None,
+                mlm_sampling_weights: Optional[torch.Tensor] = None,
                 meta_data: Optional[List[Dict]] = None,
                 **kwargs) -> Dict[str, torch.Tensor]:
 

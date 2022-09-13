@@ -159,6 +159,7 @@ class CodeLinePDGAnalyzer(Model):
                 line_idxes: torch.Tensor,
                 vertice_num: torch.Tensor,
                 edges: Optional[torch.Tensor] = None,
+                mlm_sampling_weights: Optional[torch.Tensor] = None,
                 meta_data: Optional[List] = None,
                 **kwargs) -> Dict[str, torch.Tensor]:
         # [Outline]
@@ -171,7 +172,8 @@ class CodeLinePDGAnalyzer(Model):
         # 7. Final Loss Calculating
 
         if edges is not None:
-            from_token_pretrain_loss, encoded_code_outputs = self.pretrain_forward_from_token(line_idxes.device, code)
+            from_token_pretrain_loss, encoded_code_outputs = self.pretrain_forward_from_token(line_idxes.device, code,
+                                                                                              mlm_sampling_weights=mlm_sampling_weights)
             if not self.any_as_code_embedder:
                 # Shape: [batch, seq, dim]
                 encoded_code_outputs = self.embed_encode_code(code)

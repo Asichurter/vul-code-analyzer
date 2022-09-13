@@ -6,7 +6,8 @@ from allennlp.data import Vocabulary, TextFieldTensors
 
 from common.nn.activation_builder import build_activation
 from pretrain.comp.nn.code_objective.code_objective import CodeObjective
-from pretrain.comp.nn.utils import stat_true_count_in_batch_dim, sample_2D_mask_by_count_in_batch_dim
+from pretrain.comp.nn.utils import stat_true_count_in_batch_dim, sample_2D_mask_by_count_along_batch_dim, \
+    multinomial_sample_2D_mask_by_count_along_batch_dim
 
 
 @CodeObjective.register('mlm')
@@ -111,13 +112,14 @@ class MlmObjective(CodeObjective):
         return cloned
 
 
-    def random_mask(self, code: TextFieldTensors) -> Tuple[TextFieldTensors, torch.Tensor, torch.Tensor]:
+    def random_mask(self, code: TextFieldTensors, mlm_sampling_weights: Optional[torch.Tensor] = None) -> Tuple[TextFieldTensors, torch.Tensor, torch.Tensor]:
         token_ids = code[self.code_namespace][self.token_id_key]
         candidate_mask = self.get_mask_of_token_to_be_masked(token_ids)
 
         token_count = stat_true_count_in_batch_dim(candidate_mask)
         sampled_count = (token_count * self.sample_ratio).int()
-        sampled_mask = sample_2D_mask_by_count_in_batch_dim(candidate_mask, sampled_count)
+        # sampled_mask = sample_2D_mask_by_count_along_batch_dim(candidate_mask, sampled_count)
+        sampled_mask = multinomial_sample_2D_mask_by_count_along_batch_dim(candidate_mask, sampled_count, weight=mlm_sampling_weights)
         original_sampled_token_ids = self.clone_sampled_original_token_ids(token_ids, sampled_mask)
 
 
@@ -184,8 +186,9 @@ class MlmObjective(CodeObjective):
                            code: TextFieldTensors,
                            code_embed_func: Callable,
                            epoch: int,
+                           mlm_sampling_weights: Optional[torch.Tensor] = None,
                            **kwargs) -> Dict:
-        code, sampled_mask, original_sampled_token_ids = self.random_mask(code)
+        code, sampled_mask, original_sampled_token_ids = self.random_mask(code, mlm_sampling_weights=mlm_sampling_weights)
         code_embed_outputs = code_embed_func(code)
         code_embeddings = code_embed_outputs['outputs']
 
