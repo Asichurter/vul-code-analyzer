@@ -35,6 +35,8 @@ class CodeObjectiveTrainer(Model):
         self.any_as_code_embedder = False
         self.preprocess_pretrain_objectives(code_objectives, vocab)
         self.line_extractor = line_extractor
+        self.cur_epoch = 0
+
         self.test = 0
 
         assert self.any_as_code_embedder
@@ -81,6 +83,7 @@ class CodeObjectiveTrainer(Model):
         for obj in self.from_token_code_objectives:
             obj_output = obj(code=code,
                              code_embed_func=self.embed_encode_code,
+                             epoch=self.cur_epoch,
                              **kwargs)
             # Update loss.
             obj_loss = obj_output['loss'] # / len(self.from_token_code_objectives)
@@ -104,6 +107,7 @@ class CodeObjectiveTrainer(Model):
             obj_output = obj(token_embedding=token_embedding,
                              token_mask=token_mask,
                              tensor_dict=tensor_dict,
+                             epoch=self.cur_epoch,
                              **kwargs)
             # Update loss.
             obj_loss = obj_output['loss'] # / len(self.from_embedding_code_objectives)
@@ -130,7 +134,8 @@ class CodeObjectiveTrainer(Model):
             forward_type = meta_data[0].get('forward_type', 'mlm')
 
         if forward_type == 'mlm':
-            from_token_pretrain_loss, encoded_code_outputs = self.pretrain_forward_from_token(line_idxes.device, code)
+            from_token_pretrain_loss, encoded_code_outputs = self.pretrain_forward_from_token(line_idxes.device, code,
+                                                                                              mlm_sampling_weights=mlm_sampling_weights)
             if not self.any_as_code_embedder:
                 # Shape: [batch, seq, dim]
                 encoded_code_outputs = self.embed_encode_code(code)
