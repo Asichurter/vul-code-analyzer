@@ -62,7 +62,7 @@ class MlmObjective(CodeObjective):
         else:
             raise NotImplementedError(f"Tokenizer type: {self.tokenizer_type}")
 
-    def random_select_mask_action(self, sampled_mask: torch.Tensor):
+    def _random_select_mask_action(self, sampled_mask: torch.Tensor):
         sampled_indexes = sampled_mask.nonzero()
         sampled_size = sampled_indexes.size(0)
         action_dist = torch.rand((sampled_size,), device=sampled_mask.device) #.unsqueeze(-1).repeat(2)
@@ -84,12 +84,12 @@ class MlmObjective(CodeObjective):
         return mask_action_mask, replace_action_mask
 
 
-    def mask_tokens(self, token_ids: torch.Tensor, mask: torch.Tensor):
+    def _mask_tokens(self, token_ids: torch.Tensor, mask: torch.Tensor):
         mask_token_id = self.vocab.get_token_index(self.mask_token, self.code_namespace)
         token_ids = token_ids.masked_fill(mask, mask_token_id)
         return token_ids
 
-    def replace_tokens(self, token_ids: torch.Tensor, mask: torch.Tensor):
+    def _replace_tokens(self, token_ids: torch.Tensor, mask: torch.Tensor):
         replace_idxes = mask.nonzero()
         replaced_token_ids = self._sample_tokens(size=replace_idxes.size(0),
                                                  device=token_ids.device)
@@ -106,13 +106,21 @@ class MlmObjective(CodeObjective):
         return torch.randint(low, high, (size,), device=device, dtype=torch.long)
 
 
-    def clone_sampled_original_token_ids(self, token_ids, sampled_mask):
+    def _clone_sampled_original_token_ids(self, token_ids, sampled_mask):
         sampled_idxes = sampled_mask.nonzero()
         cloned = token_ids[sampled_idxes[:,0], sampled_idxes[:,1]].clone()
         return cloned
 
 
     def random_mask(self, code: TextFieldTensors, mlm_sampling_weights: Optional[torch.Tensor] = None) -> Tuple[TextFieldTensors, torch.Tensor, torch.Tensor]:
+        """
+        Mask & replace the code input, this is core function of the mlm.
+
+        Return:
+        - code: Masked input, with token_ids changed.
+        - sampled_mask: Mask to indicate which tokens are masked(replaced).
+        - original_sampled_token_ids: Real token id labels of these masked(replaced) tokens, for producing mlm loss.
+        """
         token_ids = code[self.code_namespace][self.token_id_key]
         candidate_mask = self.get_mask_of_token_to_be_masked(token_ids)
 
@@ -120,12 +128,12 @@ class MlmObjective(CodeObjective):
         sampled_count = (token_count * self.sample_ratio).int()
         # sampled_mask = sample_2D_mask_by_count_along_batch_dim(candidate_mask, sampled_count)
         sampled_mask = multinomial_sample_2D_mask_by_count_along_batch_dim(candidate_mask, sampled_count, weight=mlm_sampling_weights)
-        original_sampled_token_ids = self.clone_sampled_original_token_ids(token_ids, sampled_mask)
+        original_sampled_token_ids = self._clone_sampled_original_token_ids(token_ids, sampled_mask)
 
 
-        mask_action_mask, replace_action_mask = self.random_select_mask_action(sampled_mask)
-        token_ids = self.mask_tokens(token_ids, mask_action_mask)
-        token_ids = self.replace_tokens(token_ids, replace_action_mask)
+        mask_action_mask, replace_action_mask = self._random_select_mask_action(sampled_mask)
+        token_ids = self._mask_tokens(token_ids, mask_action_mask)
+        token_ids = self._replace_tokens(token_ids, replace_action_mask)
         code[self.code_namespace][self.token_id_key] = token_ids
 
         return code, sampled_mask, original_sampled_token_ids
