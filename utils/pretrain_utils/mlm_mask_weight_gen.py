@@ -4,7 +4,7 @@ import torch
 from allennlp.data.tokenizers import Token
 from pygments.lexers.c_cpp import CppLexer
 
-from utils.pretrain_utils.lexer_based_token_analyse_utils import get_filtered_token_span_by_cpplexer
+from utils.pretrain_utils.lexer_based_token_analyse_utils import lexer_filter_tokens_and_intersect_allennlp_tokens
 
 cpp_lexer = CppLexer()
 
@@ -15,50 +15,13 @@ def uniform_mlm_gen_mask_weights(raw_code: str, tokens: List[Token]) -> torch.Te
     return torch.ones(len(tokens),)
 
 
-def intersect_allennlp_and_filtered_lexer_tokens(raw_code: str,
-                                                 allennlp_tokens: List[Token],
-                                                 filtered_types: List[str]):
-    """
-    Given raw code and allennlp tokenized tokens, this function first analyze
-    raw code using lexer to get token types, and filter them based on given
-    filtered_types.
-
-    Then unfiltered tokens will be intersected with allennlp tokens to determine
-    exactly which allennlp tokens are unfiltered based on resulted spans of lexer
-    analysis.
-
-    Finally, indices of these intersected allennlp tokens will be returned.
-    """
-    target_token_char_spans = get_filtered_token_span_by_cpplexer(raw_code, filtered_types)
-    span_i = 0
-    allennlp_target_token_indices = []
-    for token_i, token in enumerate(allennlp_tokens):
-        idx, idx_end = token.idx, token.idx_end
-
-        # Skip speicial tokens
-        if idx is None or idx_end is None:
-            continue
-        # No more spans to check, break
-        if span_i >= len(target_token_char_spans):
-            break
-
-        cur_span = target_token_char_spans[span_i]
-        # Check span intersection
-        if (idx - cur_span[1]) * (idx_end - cur_span[0]) < 0:
-            allennlp_target_token_indices.append(token_i)
-        # Check if current token span ends and move to next span
-        if idx_end >= cur_span[1]:
-            span_i += 1
-    return allennlp_target_token_indices
-
-
 def basic_lexer_filter_mlm_gen_mask_weights(raw_code: str, tokens: List[Token]) -> Tuple[torch.Tensor, List]:
     """
     Filter whitespaces, operators, punctuations and literals.
     """
     filtered_types = ['Token.Punctuation', 'Token.Text.Whitespace',
                       'Token.Literal.String', 'Token.Operator', 'Token.Literal.Number.Integer']
-    unfiltered_indices = intersect_allennlp_and_filtered_lexer_tokens(raw_code, tokens, filtered_types)
+    unfiltered_indices = lexer_filter_tokens_and_intersect_allennlp_tokens(raw_code, tokens, filtered_types)
     weights = torch.zeros(len(tokens),)
     weights[unfiltered_indices] += 1
     return weights, unfiltered_indices
@@ -70,7 +33,7 @@ def enhanced_lexer_filter_mlm_gen_mask_weights(raw_code: str, tokens: List[Token
     Leave only Token.Name and its subtypes (not checked yet).
     """
     filtered_types = ['Token.Punctuation', 'Token.Text', 'Token.Literal', 'Token.Operator', 'Token.Comment', 'Token.Error']
-    unfiltered_indices = intersect_allennlp_and_filtered_lexer_tokens(raw_code, tokens, filtered_types)
+    unfiltered_indices = lexer_filter_tokens_and_intersect_allennlp_tokens(raw_code, tokens, filtered_types)
     weights = torch.zeros(len(tokens),)
     weights[unfiltered_indices] += 1
     return weights, unfiltered_indices
