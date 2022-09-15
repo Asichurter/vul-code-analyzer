@@ -11,6 +11,7 @@ from allennlp.data.fields import TextField, TensorField
 from common.modules.code_cleaner import CodeCleaner, TrivialCodeCleaner
 from utils.file import read_dumped
 from utils.pretrain_utils.mlm_mask_weight_gen import dispatch_mlm_weight_gen_method
+from utils.pretrain_utils.mlm_span_mask_utils import dispatch_mlm_span_mask_tag_method
 
 
 @DatasetReader.register('packed_line_pdg')
@@ -30,6 +31,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
                  unified_label: bool = True,
                  from_raw_data: bool = True,
                  mlm_sampling_weight_strategy: str = 'uniform',
+                 mlm_span_mask_strategy: str = 'none',
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
@@ -47,6 +49,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
         self.unified_label = unified_label
         self.from_raw_data = from_raw_data
         self.mlm_sampling_weight_method = dispatch_mlm_weight_gen_method(mlm_sampling_weight_strategy)
+        self.mlm_span_mask_tag_gen_method = dispatch_mlm_span_mask_tag_method(mlm_span_mask_strategy)
 
         self.actual_read_samples = 0
 
@@ -190,6 +193,10 @@ class PackedLinePDGDatasetReader(DatasetReader):
             'vertice_num': TensorField(torch.Tensor([line_count])), # num. of line is vertice num.
             'mlm_sampling_weights': TensorField(mlm_sampling_weights),
         }
+
+        span_tags = self.mlm_span_mask_tag_gen_method(code, tokenized_code)
+        if span_tags is not None:
+            fields['mlm_span_tags'] = span_tags
 
         return True, Instance(fields)
 

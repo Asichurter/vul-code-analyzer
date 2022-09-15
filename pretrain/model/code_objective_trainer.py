@@ -122,6 +122,7 @@ class CodeObjectiveTrainer(Model):
                 vertice_num: torch.Tensor,
                 edges: Optional[torch.Tensor] = None,
                 mlm_sampling_weights: Optional[torch.Tensor] = None,
+                mlm_span_tags: Optional[torch.Tensor] = None,
                 meta_data: Optional[List[Dict]] = None,
                 **kwargs) -> Dict[str, torch.Tensor]:
 
@@ -135,7 +136,8 @@ class CodeObjectiveTrainer(Model):
 
         if forward_type == 'mlm':
             from_token_pretrain_loss, encoded_code_outputs = self.pretrain_forward_from_token(line_idxes.device, code,
-                                                                                              mlm_sampling_weights=mlm_sampling_weights)
+                                                                                              mlm_sampling_weights=mlm_sampling_weights,
+                                                                                              mlm_span_tags=mlm_span_tags)
             if not self.any_as_code_embedder:
                 # Shape: [batch, seq, dim]
                 encoded_code_outputs = self.embed_encode_code(code)

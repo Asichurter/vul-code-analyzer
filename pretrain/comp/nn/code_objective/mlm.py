@@ -112,7 +112,10 @@ class MlmObjective(CodeObjective):
         return cloned
 
 
-    def random_mask(self, code: TextFieldTensors, mlm_sampling_weights: Optional[torch.Tensor] = None) -> Tuple[TextFieldTensors, torch.Tensor, torch.Tensor]:
+    def random_mask(self,
+                    code: TextFieldTensors,
+                    mlm_sampling_weights: Optional[torch.Tensor] = None,
+                    **kwargs) -> Tuple[TextFieldTensors, torch.Tensor, torch.Tensor]:
         """
         Mask & replace the code input, this is core function of the mlm.
 
@@ -196,7 +199,9 @@ class MlmObjective(CodeObjective):
                            epoch: int,
                            mlm_sampling_weights: Optional[torch.Tensor] = None,
                            **kwargs) -> Dict:
-        code, sampled_mask, original_sampled_token_ids = self.random_mask(code, mlm_sampling_weights=mlm_sampling_weights)
+        code, sampled_mask, original_sampled_token_ids = self.random_mask(code,
+                                                                          mlm_sampling_weights=mlm_sampling_weights,
+                                                                          **kwargs)
         code_embed_outputs = code_embed_func(code)
         code_embeddings = code_embed_outputs['outputs']
 
