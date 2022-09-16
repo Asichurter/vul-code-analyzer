@@ -12,6 +12,7 @@ from pretrain.comp.nn.code_objective.mlm import MlmObjective
 from utils.pretrain_utils.mlm_span_mask_utils import get_span_mask_from_token_mask
 
 
+@CodeObjective.register('span_mlm')
 class SpanMlmObjective(MlmObjective):
     def __init__(self,
                  vocab: Vocabulary,

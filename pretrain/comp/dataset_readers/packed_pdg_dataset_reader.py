@@ -196,7 +196,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
 
         span_tags = self.mlm_span_mask_tag_gen_method(code, tokenized_code)
         if span_tags is not None:
-            fields['mlm_span_tags'] = span_tags
+            fields['mlm_span_tags'] = TensorField(span_tags)
 
         return True, Instance(fields)
 
