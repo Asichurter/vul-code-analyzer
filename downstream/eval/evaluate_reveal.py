@@ -15,7 +15,7 @@ sys.path.extend(['/data1/zhijietang/projects/vul-code-analyzer'])
 from downstream import *
 from utils import GlobalLogger as mylogger
 from utils.allennlp_utils.build_utils import build_dataset_reader_from_config
-from utils.file import save_evaluate_results
+from utils.file import save_evaluate_results, dump_pred_results
 from utils.cmd_args import read_reveal_eval_args
 
 args = read_reveal_eval_args()
@@ -110,4 +110,5 @@ save_evaluate_results(result_dict,
                           'test_model_name': model_name
                       },
                       model_base_path+'eval_results.json')
+dump_pred_results(model_base_path, {"labels": all_ref, "scores": all_score,})
 sys.exit(0)

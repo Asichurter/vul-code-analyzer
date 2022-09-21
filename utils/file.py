@@ -60,3 +60,12 @@ def save_evaluate_results(results: Dict,
 
     result_list.append(results)
     dump_json(result_list, save_json_path)
+
+def dump_pred_results(base_path: str,
+                      statistics: Dict):
+    time_stamp = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+    dump_path = os.path.join(base_path, f'results-{time_stamp}.json')
+    if os.path.exists(dump_path):
+        raise FileExistsError(f'File path already exists: {dump_path}')
+
+    dump_json(statistics, dump_path)
