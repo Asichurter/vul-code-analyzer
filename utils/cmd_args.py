@@ -14,6 +14,7 @@ def read_reveal_cv_train_from_config_args():
     parser.add_argument('-test_filenames', type=str, default='model.tar.gz', help='model file names after training, splitted by comma')
     parser.add_argument('-eval_script', type=str, default='evaluate_reveal.py', help='model file names after training, splitted by comma')
     parser.add_argument('-title', type=str, default='', help='title for reporting cv results')
+    parser.add_argument('--no_train', action='store_true', help='whether do train from scratch')
     return parser.parse_args()
 
 def read_reveal_eval_args():

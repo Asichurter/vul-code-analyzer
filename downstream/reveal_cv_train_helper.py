@@ -49,16 +49,17 @@ for split in range(args.cv):
                    f'ver. = {args.version}, split={split}, '
                    f'cuda_device = {cuda_device}, serial_dir={serialization_dir}')
 
-    print('start to train from file...')
-    ret = train_model_from_file(
-        converted_json_file_path,
-        serialization_dir,
-        force=True,
-        file_friendly_logging=True,
-        # include_package=['core'],   # all needed models can be imported within a single __init__ of a module
-    )
-    del ret
-    torch.cuda.empty_cache()
+    if not args.no_train:
+        print('start to train from file...')
+        ret = train_model_from_file(
+            converted_json_file_path,
+            serialization_dir,
+            force=True,
+            file_friendly_logging=True,
+            # include_package=['core'],   # all needed models can be imported within a single __init__ of a module
+        )
+        del ret
+        torch.cuda.empty_cache()
 
     for test_model_file_name in args.test_filenames.split(','):
         mylogger.info('reveal_cv_helper', f'Start to test Version {args.version}, Split {split}, File {test_model_file_name}')
