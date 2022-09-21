@@ -88,3 +88,10 @@ def dispatch_mlm_span_mask_tag_method(name: str):
     return mlm_span_tag_strategy_dispatcher.get(name, generate_null_span_tags)
 
 
+if __name__ == "__main__":
+    from allennlp.data.tokenizers import PretrainedTransformerTokenizer
+
+    tokenizer = PretrainedTransformerTokenizer('microsoft/codebert-base')
+    code = """if ((rc = mpt_config(ioc, &cfg)) != 0)\n return rc;"""
+    tokens = tokenizer.tokenize(code)
+    span_tags = generate_identifier_span_tags(code, tokens)

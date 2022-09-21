@@ -7,12 +7,12 @@
 
 import torch
 
-weight_path = '/data1/zhijietang/vul_data/run_logs/pretrain/25/state_epoch_9.th'
+weight_path = '/data1/zhijietang/vul_data/run_logs/pretrain/23/state_epoch_9.th'
 extra_weight_path = '/data1/zhijietang/vul_data/transformers_repos/codebert-mlm/pytorch_model.bin'
 pretrained_weights_prefix = 'code_embedder.token_embedder_code_tokens.transformer_model.'
 real_vocab_size = 50265
 vocab_embedding_key = 'embeddings.word_embeddings.weight'
-target_dump_path = '/data1/zhijietang/vul_data/transformers_repos/codebert-mlm-full-basicflt/pytorch_model.bin'
+target_dump_path = '/data1/zhijietang/vul_data/transformers_repos/codebert-pdg-mlm-full/pytorch_model.bin'
 extra_weights_need_to_be_add = ['pooler.dense.weight', 'pooler.dense.bias']
 
 model_to_be_adapt = torch.load(weight_path)

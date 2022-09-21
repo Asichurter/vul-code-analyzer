@@ -1,13 +1,10 @@
-from typing import Callable, Tuple, Dict, Optional, List
+from typing import  Tuple, Optional, List
 
 import torch
-import torch.nn.functional as F
 from allennlp.data import Vocabulary, TextFieldTensors
 
-from common.nn.activation_builder import build_activation
 from pretrain.comp.nn.code_objective.code_objective import CodeObjective
-from pretrain.comp.nn.utils import stat_true_count_in_batch_dim, sample_2D_mask_by_count_along_batch_dim, \
-    multinomial_sample_2D_mask_by_count_along_batch_dim
+from pretrain.comp.nn.utils import stat_true_count_in_batch_dim, multinomial_sample_2D_mask_by_count_along_batch_dim
 from pretrain.comp.nn.code_objective.mlm import MlmObjective
 from utils.pretrain_utils.mlm_span_mask_utils import get_span_mask_from_token_mask
 

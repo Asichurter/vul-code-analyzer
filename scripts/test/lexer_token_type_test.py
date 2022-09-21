@@ -8,7 +8,7 @@ from utils.file import load_text
 cpp_lexer = CppLexer()
 code_file_base_paths = [
     '/data1/zhijietang/vul_data/datasets/docker/cppfiles/vol100/',
-    '/data1/zhijietang/vul_data/datasets/docker/cppfiles/vol200/',
+    '/data1/zhijietang/vul_data/datasets/docker/cppfiles/vol201/',
 ]
 
 
@@ -31,3 +31,4 @@ for code_file_base_path in code_file_base_paths:
             last_token_example[str(token[1])] = token[-1]
             if str(token[1]) == 'Token.Error':
                 print(token)
+
