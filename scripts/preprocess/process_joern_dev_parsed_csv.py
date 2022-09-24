@@ -295,6 +295,7 @@ def build_token_level_pdg_struct(raw_code: str,
     # 2. Some symbols, like member visiting of pointers and undefined functions, can be properly
     #    filtered by checking if a used symbol has been defined previously.
     ################################################################################################
+    # TODO: Use “REACHES” edge to validate the use-def edges, with control-flow information
     symbol_def_nid_map = {}
     existed_use_nid_and_symbol_nid_pairs = set()
     for edge in data_edges:
