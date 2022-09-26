@@ -1,7 +1,6 @@
 import csv
 from typing import List, Dict, Optional, Tuple, Iterable
-from allennlp.data.tokenizers import Token, Tokenizer, PretrainedTransformerTokenizer
-from collections import Counter
+from allennlp.data.tokenizers import Token, PretrainedTransformerTokenizer
 import re
 
 from utils.file import load_text
@@ -10,6 +9,7 @@ ast_edge_type = 'IS_AST_PARENT'
 ctrl_dependency_edge_type = 'CONTROLS'
 data_use_dependency_edge_type = 'USE'
 data_def_dependency_edge_type = 'DEF'
+reaches_dependenct_edge_type = 'REACHES'
 symbol_node_type = 'Symbol'
 identifier_node_type = 'Identifier'
 
@@ -112,9 +112,10 @@ class Node:
                f'func_id: {self.function_id}, child_num: {self.child_num}, is_cfg_node: {self.is_cfg_node}, ' \
                f'operator: {self.operator}, base_type: {self.base_type}, identifier: {self.identifier}'
 
-
+# Change this list if other types of edges are of interest
 accepted_edge_types = [ast_edge_type, ctrl_dependency_edge_type,
-                       data_use_dependency_edge_type, data_def_dependency_edge_type]
+                       data_use_dependency_edge_type, data_def_dependency_edge_type,
+                       reaches_dependenct_edge_type]
 
 class Edge:
     def __init__(self, start_id, end_id, edge_type, edge_var):
@@ -138,14 +139,20 @@ class Edge:
     def is_data_edge(self):
         return self.is_use_edge() or self.is_def_edge()
 
+    def is_reaches_edge(self):
+        return self.type == reaches_dependenct_edge_type
+
     def __str__(self):
         return f'start: {self.sid}, end: {self.eid}, type: {self.type}, var: {self.var}'
 
+    def __repr__(self):
+        return self.__str__()
+
     @staticmethod
-    def build_edge(edge_dict: Dict):
-        edge_type = edge_dict['type']
+    def build_edge(edge_list: List):
+        edge_type = edge_list[2] # edge_dict['type']
         if edge_type in accepted_edge_types:
-            edge = Edge(edge_dict['start'], edge_dict['end'], edge_dict['type'], edge_dict['var'])
+            edge = Edge(*edge_list)
             return edge
         else:
             return None
@@ -218,74 +225,14 @@ def intersect_char_spans_with_allennlp_tokens(tokens: List[Token],
 
     return allennlp_target_token_indices
 
-def build_token_level_pdg_struct(raw_code: str,
-                                 tokens: List[Token],
-                                 node_rows: List[List],
-                                 edge_dicts: List[Dict],
-                                 multi_vs_multi_strategy: str = 'all') -> Tuple[Iterable[str], Iterable[str]]:
-    assert multi_vs_multi_strategy in ['all', 'first']
-    pdg_ctrl_edges = set()
-    pdg_data_edges = set()
-
-    # Build nodes
-    pdg_nodes: List[Optional[Node]] = [None] * (len(node_rows)+1)
-    for node_row in node_rows:
-        node = Node(*node_row)
-        nid = node.nid
-        pdg_nodes[nid] = node
-
-    # Build edges
-    ast_edges: List[Edge] = []
-    ctrl_edges: List[Edge] = []
-    data_edges: List[Edge] = []
-    for edge_dict in edge_dicts:
-        edge = Edge.build_edge(edge_dict)
-        if edge is not None:
-            if edge.is_ast_parent_edge():
-                ast_edges.append(edge)
-            elif edge.is_ctrl_edge():
-                ctrl_edges.append(edge)
-            elif edge.is_data_edge():
-                data_edges.append(edge)
-
-    # Build AST struct
-    for edge in ast_edges:
-        if edge.is_ast_parent_edge():
-            ast_p_id, ast_c_id = edge.sid, edge.eid
-            pdg_nodes[ast_p_id].add_ast_child(ast_c_id)
-            pdg_nodes[ast_c_id].set_ast_parent(ast_p_id)
-
-    signature_len = raw_code.find('{') + 1
-
-    # Process control dependencies
-    for edge in ctrl_edges:
-        if edge.is_ctrl_edge():
-            ctrl_sid, ctrl_eid = edge.sid, edge.eid
-            # Do not handle node with empty location info
-            if pdg_nodes[ctrl_sid].is_empty_loc() or pdg_nodes[ctrl_eid].is_empty_loc():
-                continue
-
-            # Find identifier nodes
-            # TODO: CTRL edges are built on identifiers, is this logically right?
-            ctrl_start_identifier_nids = find_child_identifier_node_ids(ctrl_sid, pdg_nodes)
-            ctrl_end_identifier_nids = find_child_identifier_node_ids(ctrl_eid, pdg_nodes)
-            # Parse char spans of selected identifiers
-            ctrl_start_identifier_char_spans = parse_and_sort_char_spans_from_nids(ctrl_start_identifier_nids, pdg_nodes, signature_len)
-            ctrl_end_identifier_char_spans = parse_and_sort_char_spans_from_nids(ctrl_end_identifier_nids, pdg_nodes, signature_len)
-            # Intersect char spans with allennlp tokens
-            ctrl_start_token_indices = intersect_char_spans_with_allennlp_tokens(tokens, ctrl_start_identifier_char_spans)
-            ctrl_end_token_indices = intersect_char_spans_with_allennlp_tokens(tokens, ctrl_end_identifier_char_spans)
-            # Apply multi v.s. multi handling strategy
-            ctrl_start_token_indices = apply_multi_vs_multi_strategy(ctrl_start_token_indices, multi_vs_multi_strategy)
-            ctrl_end_token_indices = apply_multi_vs_multi_strategy(ctrl_end_token_indices, multi_vs_multi_strategy)
-
-            print(f'Ctrl edge: [{ctrl_start_identifier_nids}] <{ctrl_end_identifier_nids}>')
-            # Add token-level ctrl edges
-            for sid in ctrl_start_token_indices:
-                for eid in ctrl_end_token_indices:
-                    pdg_ctrl_edges.add(f'{sid} {eid}')
-
+def build_token_level_data_pdg_old(data_edges: List[Edge],
+                                   pdg_nodes: List[Node],
+                                   tokens: List[Token],
+                                   signature_len: int,
+                                   multi_vs_multi_strategy: str) -> Iterable[str]:
     ################################################################################################
+    # DEPRECATED: NOT CONSIDER CONTROL FLOW. Use "build_token_level_data_pdg" instead.
+    # ------------------------------------------------------------------------------------------
     # We use hacks to process data dependencies:
     # ------------------------------------------------------------------------------------------
     # 1. Since symbols can be defined multiple times, we must determine which definition a use edge
@@ -295,14 +242,14 @@ def build_token_level_pdg_struct(raw_code: str,
     # 2. Some symbols, like member visiting of pointers and undefined functions, can be properly
     #    filtered by checking if a used symbol has been defined previously.
     ################################################################################################
-    # TODO: Use “REACHES” edge to validate the use-def edges, with control-flow information
     symbol_def_nid_map = {}
     existed_use_nid_and_symbol_nid_pairs = set()
+    pdg_data_edges = set()
     for edge in data_edges:
         if edge.is_def_edge():
-            def_nid, sym_nid = edge.sid, edge.eid
+            def_identifier_nid, sym_nid = edge.sid, edge.eid
             symbol_code = pdg_nodes[sym_nid].node_code
-            def_node_identifier_nids = find_child_identifier_node_ids(def_nid, pdg_nodes)
+            def_node_identifier_nids = find_child_identifier_node_ids(def_identifier_nid, pdg_nodes)
             update_count = 0
             for identifier_nid in def_node_identifier_nids:
                 # Find the exactly matched identifier for symbol
@@ -320,7 +267,7 @@ def build_token_level_pdg_struct(raw_code: str,
             if sym_nid not in symbol_def_nid_map:
                 continue
             else:
-                def_nid = symbol_def_nid_map[sym_nid]
+                def_identifier_nid = symbol_def_nid_map[sym_nid]
 
             symbol_code = pdg_nodes[sym_nid].node_code
             use_node_identifier_nids = find_child_identifier_node_ids(use_nid, pdg_nodes)
@@ -329,26 +276,160 @@ def build_token_level_pdg_struct(raw_code: str,
                     # Pre-check if use-symbol pair has been processed before
                     use_symbol_nid_pair = f'{use_identifier_nid} {sym_nid}'
                     if use_symbol_nid_pair in existed_use_nid_and_symbol_nid_pairs:
-                        # print(f'Existed pair: {use_symbol_nid_pair}, skip')
                         continue
                     else:
                         existed_use_nid_and_symbol_nid_pairs.add(use_symbol_nid_pair)
 
-                    data_def_identifier_char_spans = parse_and_sort_char_spans_from_nids([def_nid], pdg_nodes, signature_len)
-                    data_use_identifier_char_spans = parse_and_sort_char_spans_from_nids([use_identifier_nid], pdg_nodes, signature_len)
-                    data_def_token_indices = intersect_char_spans_with_allennlp_tokens(tokens, data_def_identifier_char_spans)
-                    data_use_token_indices = intersect_char_spans_with_allennlp_tokens(tokens, data_use_identifier_char_spans)
-                    data_def_token_indices = apply_multi_vs_multi_strategy(data_def_token_indices, multi_vs_multi_strategy)
-                    data_use_token_indices = apply_multi_vs_multi_strategy(data_use_token_indices, multi_vs_multi_strategy)
+                    def_use_token_edges = intersect_tokens_from_nids([def_identifier_nid],
+                                                                     [use_identifier_nid],
+                                                                     pdg_nodes,
+                                                                     tokens,
+                                                                     signature_len,
+                                                                     multi_vs_multi_strategy)
+                    for token_edge in def_use_token_edges:
+                        pdg_data_edges.add(token_edge)
 
-                    # Add token-level data edges
-                    for sid in data_def_token_indices:
-                        for eid in data_use_token_indices:
-                            # Filter self-loop connection
-                            if sid != eid:
-                                pdg_data_edges.add(f'{sid} {eid}')
+    return pdg_data_edges
 
-    return pdg_ctrl_edges, pdg_data_edges
+
+def build_token_level_ctrl_pdg(ctrl_edges: List[Edge],
+                               pdg_nodes: List[Node],
+                               tokens: List[Token],
+                               signature_len: int,
+                               multi_vs_multi_strategy: str) -> Iterable[str]:
+    pdg_ctrl_edges = set()
+    # Process control dependencies
+    for edge in ctrl_edges:
+        if edge.is_ctrl_edge():
+            ctrl_sid, ctrl_eid = edge.sid, edge.eid
+            # Do not handle node with empty location info
+            if pdg_nodes[ctrl_sid].is_empty_loc() or pdg_nodes[ctrl_eid].is_empty_loc():
+                continue
+
+            # Find identifier nodes
+            # TODO: CTRL edges are built on identifiers, is this logically right?
+            ctrl_start_identifier_nids = find_child_identifier_node_ids(ctrl_sid, pdg_nodes)
+            ctrl_end_identifier_nids = find_child_identifier_node_ids(ctrl_eid, pdg_nodes)
+            ctrl_token_edges = intersect_tokens_from_nids(ctrl_start_identifier_nids,
+                                                          ctrl_end_identifier_nids,
+                                                          pdg_nodes,
+                                                          tokens,
+                                                          signature_len,
+                                                          multi_vs_multi_strategy)
+            for ctrl_token_edge in ctrl_token_edges:
+                pdg_ctrl_edges.add(ctrl_token_edge)
+
+    return pdg_ctrl_edges
+
+def build_token_level_data_pdg(reaches_edges: List[Edge],
+                               pdg_nodes: List[Node],
+                               tokens: List[Token],
+                               signature_len: int,
+                               multi_vs_multi_strategy: str) -> Iterable[str]:
+    """
+    Basic logic is using REACHES edge to mine the identifier usage dependencies.
+    Thus we still only focus on the identifiers from the nodes of the REACHES edge, and
+    every REACHES edge will trigger an attempt of building identifier data dependencies
+    between two REACHES nodes.
+    """
+    all_reaches_token_edges = set()
+    for edge in reaches_edges:
+        src_reaches_nid, tgt_reaches_nid, identifier_var = edge.sid, edge.eid, edge.var
+        src_reaches_identifier_ids = find_child_identifier_node_ids(src_reaches_nid, pdg_nodes)
+        tgt_reaches_identifier_ids = find_child_identifier_node_ids(tgt_reaches_nid, pdg_nodes)
+        # Filter identifiers not match the value given by REACHES edge
+        src_reaches_identifier_ids = list(filter(lambda _id: pdg_nodes[_id].node_code == identifier_var, src_reaches_identifier_ids))
+        tgt_reaches_identifier_ids = list(filter(lambda _id: pdg_nodes[_id].node_code == identifier_var, tgt_reaches_identifier_ids))
+        reaches_token_edges = intersect_tokens_from_nids(src_reaches_identifier_ids,
+                                                         tgt_reaches_identifier_ids,
+                                                         pdg_nodes,
+                                                         tokens,
+                                                         signature_len,
+                                                         multi_vs_multi_strategy)
+        for token_edge in reaches_token_edges:
+            all_reaches_token_edges.add(token_edge)
+
+    return all_reaches_token_edges
+
+def build_token_level_pdg_struct(raw_code: str,
+                                 tokens: List[Token],
+                                 node_rows: List[List],
+                                 edge_lists: List[List],
+                                 multi_vs_multi_strategy: str = 'all',
+                                 to_build_token_ctrl_edges: bool = False) -> Tuple[Iterable[str], Iterable[str]]:
+    assert multi_vs_multi_strategy in ['all', 'first']
+
+    # Build nodes
+    pdg_nodes: List[Optional[Node]] = [None] * (len(node_rows)+1)
+    for node_row in node_rows:
+        node = Node(*node_row)
+        nid = node.nid
+        pdg_nodes[nid] = node
+
+    # Build edges
+    ast_edges: List[Edge] = []
+    ctrl_edges: List[Edge] = []
+    data_edges: List[Edge] = []
+    reaches_edges: List[Edge] = []
+    for edge_list in edge_lists:
+        edge = Edge.build_edge(edge_list)
+        if edge is not None:
+            if edge.is_ast_parent_edge():
+                ast_edges.append(edge)
+            elif edge.is_ctrl_edge():
+                ctrl_edges.append(edge)
+            elif edge.is_data_edge():
+                data_edges.append(edge)
+            elif edge.is_reaches_edge():
+                reaches_edges.append(edge)
+
+    # Build AST struct
+    for edge in ast_edges:
+        if edge.is_ast_parent_edge():
+            ast_p_id, ast_c_id = edge.sid, edge.eid
+            pdg_nodes[ast_p_id].add_ast_child(ast_c_id)
+            pdg_nodes[ast_c_id].set_ast_parent(ast_p_id)
+
+    signature_len = raw_code.find('{') + 1
+
+    # Build token edges
+    common_params = [pdg_nodes, tokens, signature_len, multi_vs_multi_strategy]
+    if to_build_token_ctrl_edges:
+        token_ctrl_pdg_edges = build_token_level_ctrl_pdg(ctrl_edges, *common_params)
+    else:
+        token_ctrl_pdg_edges = set()
+    # token_data_pdg_edges_old = build_token_level_data_pdg_old(data_edges, *common_params)
+    token_data_pdg_edges = build_token_level_data_pdg(reaches_edges, *common_params)
+
+    return token_ctrl_pdg_edges, token_data_pdg_edges
+
+def intersect_tokens_from_nids(src_nids: Iterable[int],
+                               tgt_nids: Iterable[int],
+                               nodes: List[Node],
+                               tokens: List[Token],
+                               signature_len: int,
+                               multi_vs_multi_strategy: str) -> Iterable[str]:
+    # Parse char spans of selected identifiers
+    src_char_spans = parse_and_sort_char_spans_from_nids(src_nids, nodes, signature_len)
+    tgt_chat_spans = parse_and_sort_char_spans_from_nids(tgt_nids, nodes, signature_len)
+    # Intersect char spans with allennlp tokens
+    src_token_indices = intersect_char_spans_with_allennlp_tokens(tokens, src_char_spans)
+    tgt_token_indices = intersect_char_spans_with_allennlp_tokens(tokens, tgt_chat_spans)
+    # Apply multi v.s. multi handling strategy
+    src_token_indices = apply_multi_vs_multi_strategy(src_token_indices, multi_vs_multi_strategy)
+    tgt_token_indices = apply_multi_vs_multi_strategy(tgt_token_indices, multi_vs_multi_strategy)
+
+    # Add token-level data edges
+    token_to_token_edges = set()
+    for sid in src_token_indices:
+        for eid in tgt_token_indices:
+            # Filter self-loop connection
+            if sid != eid:
+                token_to_token_edges.add(f'{sid} {eid}')
+
+    return token_to_token_edges
+
+# TODO: Write preprocess into joern_parse code
 
 def convert_func_signature_to_one_line(code_path):
     """
@@ -360,7 +441,8 @@ def convert_func_signature_to_one_line(code_path):
     Example:
         seat_set_active_session (Seat *seat, Session *session)
         {
-        ...
+            ...
+        }
     """
     with open(code_path, 'r') as f:
         text = f.read()
@@ -374,15 +456,15 @@ def convert_func_signature_to_one_line(code_path):
 
 if __name__ == '__main__':
     import time
-    raw_code_path = '/data1/zhijietang/dockers/joern-dev/tests/testCode5/test5.cpp'
-    node_csv_path = '/data1/zhijietang/dockers/joern-dev/tests/parsed_testCode5/testCode5/test5.cpp/nodes.csv'
-    edge_csv_path = '/data1/zhijietang/dockers/joern-dev/tests/parsed_testCode5/testCode5/test5.cpp/edges.csv'
+    raw_code_path = '/data1/zhijietang/dockers/joern-dev/tests/testCode2/test2.cpp'
+    node_csv_path = '/data1/zhijietang/dockers/joern-dev/tests/parsed_testCode2/testCode2/test2.cpp/nodes.csv'
+    edge_csv_path = '/data1/zhijietang/dockers/joern-dev/tests/parsed_testCode2/testCode2/test2.cpp/edges.csv'
     convert_func_signature_to_one_line(raw_code_path)
     raw_code = load_text(raw_code_path)
     tokenizer = PretrainedTransformerTokenizer('microsoft/codebert-base')
 
     nodes = read_csv_as_list(node_csv_path)
-    edges = read_csv_as_dict(edge_csv_path)
+    edges = read_csv_as_list(edge_csv_path)
     tokens = tokenizer.tokenize(raw_code)
     start_time = time.time()
     ctrl_edges, data_edges = build_token_level_pdg_struct(raw_code, tokens, nodes, edges, multi_vs_multi_strategy='first')
