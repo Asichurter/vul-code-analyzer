@@ -454,6 +454,12 @@ def convert_func_signature_to_one_line(code_path):
     with open(code_path, 'w') as f:
         f.write(text)
 
+def translate_data_edges(data_edges: List[str],
+                         tokens: List[Token]):
+    for edge in data_edges:
+        sid, eid = edge.split()
+        print(tokens[int(sid)], tokens[int(eid)])
+
 if __name__ == '__main__':
     import time
     raw_code_path = '/data1/zhijietang/dockers/joern-dev/tests/testCode2/test2.cpp'
@@ -462,6 +468,7 @@ if __name__ == '__main__':
     convert_func_signature_to_one_line(raw_code_path)
     raw_code = load_text(raw_code_path)
     tokenizer = PretrainedTransformerTokenizer('microsoft/codebert-base')
+    # tokenizer = PretrainedTransformerTokenizer('microsoft/codebert-base', max_length=100)
 
     nodes = read_csv_as_list(node_csv_path)
     edges = read_csv_as_list(edge_csv_path)

@@ -19,8 +19,13 @@ cmds: List[str] = [
     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 2 -id 0',
     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 4 -id 1',
     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 1 -id 2',
-    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 3 -id 3',
+    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 5 -id 3',
     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 3 -id 4',
+    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 1 -id 5',
+    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 4 -id 6',
+    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 3 -id 7',
+    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 5 -id 8',
+    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 2 -id 9',
 ]
 
 pool_max_size = 3
