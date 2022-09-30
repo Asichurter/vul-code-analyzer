@@ -151,3 +151,39 @@ class SeparatedMaskF1(Metric):
         self.data_f1.reset()
         self.ctrl_f1.reset()
 
+@Metric.register('separated_single_mask_f1')
+class SeparatedSingleMaskF1(Metric):
+    def __init__(self):
+        self.f1 = F1Measure('masked_data')
+
+    def _check_shape(self,
+                     predictions: torch.Tensor,
+                     gold_labels: torch.Tensor,
+                     mask: Optional[torch.BoolTensor]):
+        assert predictions.shape == gold_labels.shape == mask.shape
+
+    def _mask_select(self, pred, label, mask):
+        masked_pred = torch.masked_select(pred, mask).long()
+        masked_label = torch.masked_select(label, mask).long()
+        return masked_pred, masked_label
+
+    def __call__(self,
+                 predictions: torch.Tensor,
+                 gold_labels: torch.Tensor,
+                 mask: Optional[torch.BoolTensor]):
+        # First detach tensors to avoid gradient flow.
+        predictions, gold_labels, mask = self.detach_tensors(predictions, gold_labels, mask)
+        self._check_shape(predictions, gold_labels, mask)
+
+        masked_pred, masked_label = self._mask_select(predictions, gold_labels, mask)
+
+        self.f1.update_metric(masked_pred, masked_label)
+
+    def get_metric(self, reset: bool):
+        metric = self.f1.get_metric()
+        if reset:
+            self.reset()
+        return metric
+
+    def reset(self) -> None:
+        self.f1.reset()
