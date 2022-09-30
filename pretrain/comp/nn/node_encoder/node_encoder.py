@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 
@@ -17,6 +17,7 @@ class NodeEncoder(torch.nn.Module, Registrable):
 
     def forward(self,
                 node_features: torch.Tensor,
+                node_mask: Optional[torch.Tensor] = None,
                 node_extra_features: Dict[str, torch.Tensor] = None,
                 **kwargs) -> torch.Tensor:
         raise NotImplementedError

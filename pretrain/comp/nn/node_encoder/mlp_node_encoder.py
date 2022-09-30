@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import torch
 
@@ -26,6 +26,7 @@ class MLPNodeEncoder(NodeEncoder):
 
     def forward(self,
                 node_features: torch.Tensor,
+                node_mask: Optional[torch.Tensor] = None,
                 node_extra_features: Dict[str, torch.Tensor] = None,
                 **kwargs) -> torch.Tensor:
         return self.mlp(node_features)
