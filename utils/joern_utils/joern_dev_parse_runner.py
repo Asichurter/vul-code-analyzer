@@ -15,20 +15,23 @@ from typing import List
 
 process_pools: List[subprocess.Popen] = []
 
-cmds: List[str] = [
-    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 2 -id 0',
-    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 4 -id 1',
-    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 1 -id 2',
-    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 5 -id 3',
-    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 3 -id 4',
-    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 1 -id 5',
-    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 4 -id 6',
-    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 3 -id 7',
-    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 5 -id 8',
-    '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 2 -id 9',
-]
+# cmds: List[str] = [
+#     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 2 -id 0',
+#     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 4 -id 1',
+#     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 1 -id 2',
+#     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 5 -id 3',
+#     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 3 -id 4',
+#     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 1 -id 5',
+#     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 4 -id 6',
+#     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 3 -id 7',
+#     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 5 -id 8',
+#     '/usr/bin/python3 /home/scripts/joern_runner_test.py -step 2 -id 9',
+# ]
 
-pool_max_size = 3
+cmd_template = '/usr/bin/python3 /home/scripts/joern_parse_vol_new.py --vol_base_path /data/cppfiles/ --tgt_vol_base_path /data/joern_dev_analysis_results --vol vol{} > /home/scripts/nohup_vol{}.out'
+cmds: List[str] = [cmd_template.format(i,i) for i in range(0,229)]
+
+pool_max_size = 10
 
 for cmd in cmds[:pool_max_size]:
     p = subprocess.Popen(cmd, shell=True)
@@ -51,4 +54,5 @@ while len(process_pools) > 0:
             break
     # Avoid too frequent polling
     time.sleep(2)
+
 print('\n\n[Main] All done')
