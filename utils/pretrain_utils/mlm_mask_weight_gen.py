@@ -8,11 +8,11 @@ from utils.pretrain_utils.lexer_based_token_analyse_utils import lexer_filter_to
 
 cpp_lexer = CppLexer()
 
-def uniform_mlm_gen_mask_weights(raw_code: str, tokens: List[Token]) -> torch.Tensor:
+def uniform_mlm_gen_mask_weights(raw_code: str, tokens: List[Token]) -> Tuple[torch.Tensor, List]:
     """
     Equal weights for all tokens.
     """
-    return torch.ones(len(tokens),)
+    return torch.ones(len(tokens),), []
 
 
 def basic_lexer_filter_mlm_gen_mask_weights(raw_code: str, tokens: List[Token]) -> Tuple[torch.Tensor, List]:

@@ -204,7 +204,7 @@ class CodeLinePDGAnalyzer(Model):
                 'edge_labels': pred_edge_labels,
             }
         else:
-            pdg_loss, pdg_loss_mask = self.loss_sampler.get_loss(edges, pred_edge_probs, vertice_num)
+            pdg_loss, pdg_loss_mask = self.loss_sampler.get_loss(edges, pred_edge_probs)
             pdg_loss *= self.pdg_loss_coeff
 
             # Check pdg loss is in range.
