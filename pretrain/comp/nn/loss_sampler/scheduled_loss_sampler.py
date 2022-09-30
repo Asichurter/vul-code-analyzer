@@ -15,14 +15,10 @@ class EpochScheduledLossSampler(LossSampler):
         self.epoch_count = 0
         self.current_sampling_ratio = 0.
 
-    def get_loss(self,
-                 edge_matrix: torch.Tensor,
-                 predicted_matrix: torch.Tensor,
-                 vertice_num: torch.Tensor) -> torch.Tensor:
+    def get_loss(self, edge_matrix: torch.Tensor, predicted_matrix: torch.Tensor) -> torch.Tensor:
         """
         :param edge_matrix: [batch, max_vertice, max_vertice]
         :param predicted_matrix: [batch, max_vertice, max_vertice, edge_type_num]
-        :param vertice_num: Shape: [batch, 1]
         :return:
         """
         pass

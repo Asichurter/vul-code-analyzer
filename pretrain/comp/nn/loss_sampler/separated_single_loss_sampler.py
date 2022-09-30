@@ -7,23 +7,21 @@ from pretrain.comp.nn.utils import stat_true_count_in_batch_dim, sample_2D_mask_
 from pretrain.comp.nn.loss_sampler.loss_sampler import LossSampler
 
 
-@LossSampler.register('separated_full')
-class SeparatedFullLossSampler(LossSampler):
+@LossSampler.register('separated_full_single')
+class SeparatedFullSingleLossSampler(LossSampler):
     def __init__(self, loss_func: LossFunc, **kwargs):
         super().__init__(loss_func, **kwargs)
 
     def get_loss(self, edge_matrix: torch.Tensor, predicted_matrix: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         :param edge_matrix: [batch, max_vertice, max_vertice]
-        :param predicted_matrix: [batch, max_vertice, max_vertice, edge_type_num]
+        :param predicted_matrix: [batch, max_vertice, max_vertice]
         :return:
         """
-        # Drop 0-th row and column, since line index starts from 1.
-        # edge_matrix = edge_matrix[:, :, 1:, 1:]
         # Minus one to make label range [0,1].
         edge_matrix -= 1
-        assert edge_matrix.shape == predicted_matrix.shape[:4], "Unmatched shape between label edges and predicted edges"
-        assert predicted_matrix.size(1) == 2, "The second dimension should be 2 for data and control predictions"
+        assert edge_matrix.shape == predicted_matrix.shape[:3], \
+            f"Unmatched shape between label edges ({edge_matrix.size()}) and predicted edges({predicted_matrix.size()})"
 
         # Manually operating "masked_mean"
         loss_mask = (edge_matrix != -1).bool()
@@ -31,12 +29,13 @@ class SeparatedFullLossSampler(LossSampler):
                loss_mask
 
 
-@LossSampler.register('separated_balanced')
-class SeparatedBalancedLossSampler(LossSampler):
+@LossSampler.register('separated_balanced_single')
+class SeparatedBalancedSingleLossSampler(LossSampler):
     """
     This sampler balances edged pairs and non-edged pairs by sampling partial non-edged pairs
     from all the empty positions to make the have the same size.
     """
+    # TODO: This code has not been validated
     def __init__(self,
                  loss_func: LossFunc,
                  be_full_when_test: bool = False,
@@ -45,22 +44,20 @@ class SeparatedBalancedLossSampler(LossSampler):
         self.be_full_when_test = be_full_when_test
 
     def get_loss(self, edge_matrix: torch.Tensor, predicted_matrix: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
-        # Drop 0-th row and column, since line index starts from 1.
-        # edge_matrix = edge_matrix[:, :, 1:, 1:]
         # Minus one to make label range [0,1].
         edge_matrix -= 1
         assert edge_matrix.shape == predicted_matrix.shape, "Unmatched shape between label edges and predicted edges"
-        assert predicted_matrix.size(1) == 2, "The second dimension should be 2 for data and control predictions"
+        # assert predicted_matrix.size(1) == 2, "The second dimension should be 2 for data and control predictions"
 
         if self.be_full_when_test and not self.training:
             loss_mask = (edge_matrix != -1).bool()
             return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, loss_mask), \
                    loss_mask
         else:
-            bsz, _, v_num = edge_matrix.shape[:3]
+            bsz, v_num = edge_matrix.shape[:2]
             # Here we must use .reshape instead of .view
-            edge_matrix = edge_matrix.reshape(bsz*2, v_num*v_num)
-            predicted_matrix = predicted_matrix.reshape(bsz*2, v_num*v_num)
+            edge_matrix = edge_matrix.reshape(bsz, v_num*v_num)
+            predicted_matrix = predicted_matrix.reshape(bsz, v_num*v_num)
 
             # Get indexes for edge/non-edge positions.
             # Note non-edged positions have index 0.
@@ -71,4 +68,4 @@ class SeparatedBalancedLossSampler(LossSampler):
             sampled_non_edge_mask = sample_2D_mask_by_count_along_batch_dim(non_edge_mask, edge_count)
             sampled_mask = sampled_non_edge_mask.bool() | edge_mask
             return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, sampled_mask), \
-                   sampled_mask.view(bsz, 2, v_num, v_num)
+                   sampled_mask.view(bsz, v_num, v_num)
