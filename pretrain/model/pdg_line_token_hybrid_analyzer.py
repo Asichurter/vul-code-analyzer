@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Optional, List
+from typing import Dict, Tuple, Optional, List, Iterable
 
 import torch
 from allennlp.common import Lazy
@@ -28,13 +28,17 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
         line_extractor: LineExtractor,
         line_ctrl_decoder: StructDecoder,
         token_data_decoder: StructDecoder,
-        loss_sampler: LossSampler,
+        ctrl_loss_sampler: LossSampler,
+        data_loss_sampler: LossSampler,
         drop_tokenizer_special_token_type: str = 'codebert',
         ctrl_metric: Optional[Metric] = None,
         data_metric: Optional[Metric] = None,
         code_objectives: List[Lazy[CodeObjective]] = [],
-        pdg_loss_coeff: float = 1.,
-        pdg_loss_range: List[int] = [-1,-1],
+        pdg_ctrl_loss_coeff: float = 1.,
+        pdg_data_loss_coeff: float = 1.,
+        pdg_ctrl_loss_range: List[int] = [-1,-1],
+        pdg_data_loss_range: List[int] = [-1,-1],
+        token_edge_input_being_optimized: bool = False,
         **kwargs
     ):
         super().__init__(vocab, **kwargs)
@@ -45,7 +49,8 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
         self.line_extractor = line_extractor
         self.line_ctrl_decoder = line_ctrl_decoder
         self.token_data_decoder = token_data_decoder
-        self.loss_sampler = loss_sampler
+        self.ctrl_loss_sampler = ctrl_loss_sampler
+        self.data_loss_sampler = data_loss_sampler
         self.ctrl_metric = ctrl_metric
         self.data_metric = data_metric
         self.drop_tokenizer_special_token_type = drop_tokenizer_special_token_type
@@ -54,8 +59,11 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
         self.from_embedding_code_objectives = torch.nn.ModuleList()
         self.any_as_code_embedder = False
         self.preprocess_pretrain_objectives(code_objectives, vocab)
-        self.pdg_loss_coeff = pdg_loss_coeff
-        self.pdg_loss_range = pdg_loss_range
+        self.pdg_ctrl_loss_coeff = pdg_ctrl_loss_coeff
+        self.pdg_data_loss_coeff = pdg_data_loss_coeff
+        self.pdg_ctrl_loss_range = pdg_ctrl_loss_range
+        self.pdg_data_loss_range = pdg_data_loss_range
+        self.token_edge_input_being_optimized = token_edge_input_being_optimized
         self.cur_epoch = 0
 
         self.test = 0
@@ -165,11 +173,44 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
 
         return loss
 
-    def check_pdg_loss_in_range(self):
+    def check_pdg_loss_in_range(self, range_to_check: List[int]):
         # Default behavior: Always in range.
-        if self.pdg_loss_range[0] == self.pdg_loss_range[1] == -1:
+        if range_to_check[0] == range_to_check[1] == -1:
             return True
-        return self.pdg_loss_range[0] <= self.cur_epoch <= self.pdg_loss_range[1]
+        return range_to_check[0] <= self.cur_epoch <= range_to_check[1]
+
+    def _construct_matrix_from_opt_edge_idxes(self,
+                                              opt_edge_idxes: torch.Tensor,
+                                              token_mask: torch.Tensor) -> torch.Tensor:
+        bsz, max_token_num = token_mask.shape
+        # opt_edge_idxes shape: [bsz, max_edge, 2]
+        # meta_idxes shape: [num_of_edges_in_batch, 2]
+
+        # First we want to filter padded edges in the input "opt_edge_idxes"
+        # For padded edges, they must be (0,0) and sum to 0, thus we can use "nonzero" to filter them
+        # (Side Effect: real (0,0) edge may also be filtered)
+        non_pad_opt_edge_meta_idxes = opt_edge_idxes.sum(2).nonzero()
+        # unshaped_items shape: [num_of_edges_in_batch, 2]
+        unshaped_non_pad_opt_edge_items = opt_edge_idxes[non_pad_opt_edge_meta_idxes[:,0], non_pad_opt_edge_meta_idxes[:,1]]
+        # item_inbatch_idxes shape: [num_of_edges_in_batch]
+        items_inbatch_idxes = non_pad_opt_edge_meta_idxes[:,0]
+        # matrix_edge_idxes shape: [num_of_edges_in_batch, 3]
+        matrix_edge_idxes = torch.cat((items_inbatch_idxes.unsqueeze(-1), unshaped_non_pad_opt_edge_items), dim=-1)
+        matrix_edge_idxes = matrix_edge_idxes.long()
+
+        # token_mask shape: [bsz, max_token, max_token]
+        matrix = torch.ones((bsz,max_token_num,max_token_num), device=token_mask.device)
+        # Set edges
+        matrix[matrix_edge_idxes[:,0],matrix_edge_idxes[:,1],matrix_edge_idxes[:,2]] = 2
+
+        # Set padded positions in matrix to zero
+        # This process is hard to parallelize, thus we sequentially do it
+        for i, matrix_i in enumerate(matrix):
+            non_pad_token_num = token_mask[i].sum()
+            matrix_i[non_pad_token_num:,non_pad_token_num:] = 0
+
+        return matrix
+
 
     def forward(self,
                 code: TextFieldTensors,
@@ -202,7 +243,10 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
             from_embedding_pretrain_loss = self.pretrain_forward_from_embedding(line_idxes.device,
                                                                                 code_token_features,
                                                                                 code_token_mask)
+        # No edges fed, just embed and predict edges
         else:
+            from_token_pretrain_loss = torch.zeros((1,), device=line_idxes.device)
+            from_embedding_pretrain_loss = torch.zeros((1,), device=line_idxes.device)
             encoded_code_outputs = self.embed_encode_code(code)
             code_token_features, code_token_mask = encoded_code_outputs['outputs'], encoded_code_outputs['mask']
 
@@ -219,17 +263,16 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
 
         final_loss = (from_token_pretrain_loss + from_embedding_pretrain_loss).squeeze()
         returned_dict = {}
-        # Check pdg loss is in range.
-        if_pdg_loss_in_range = self.check_pdg_loss_in_range()
         if line_ctrl_edges is None:
             returned_dict.update({
                 'meta_data': meta_data,
                 'ctrl_edge_logits': pred_ctrl_edge_probs,
                 'ctrl_edge_labels': pred_ctrl_edge_labels,
             })
-        elif if_pdg_loss_in_range:
-            pdg_ctrl_loss, pdg_ctrl_loss_mask = self.loss_sampler.get_loss(line_ctrl_edges, pred_ctrl_edge_probs)
-            pdg_ctrl_loss *= self.pdg_loss_coeff
+        # Check pdg loss is in range.
+        elif self.check_pdg_loss_in_range(self.pdg_ctrl_loss_range):
+            pdg_ctrl_loss, pdg_ctrl_loss_mask = self.ctrl_loss_sampler.get_loss(line_ctrl_edges, pred_ctrl_edge_probs)
+            pdg_ctrl_loss *= self.pdg_ctrl_loss_coeff
 
             final_loss += pdg_ctrl_loss
             if self.ctrl_metric is not None:
@@ -239,15 +282,27 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
                 'ctrl_edge_labels': pred_ctrl_edge_labels,
             })
 
-        if True and token_data_edges is None:
+        if token_data_edges is None:
             returned_dict.update({
                 'meta_data': meta_data,
                 'data_edge_logits': pred_data_edge_probs,
                 'data_edge_labels': pred_data_edge_labels,
             })
-        elif if_pdg_loss_in_range:
-            pdg_data_loss, pdg_data_loss_mask = self.loss_sampler.get_loss(token_data_edges, pred_data_edge_probs)
-            pdg_data_loss *= self.pdg_loss_coeff
+        # Check pdg loss is in range.
+        elif self.check_pdg_loss_in_range(self.pdg_data_loss_range):
+            # TODO: Check identifier matching
+            # batch_i = 0
+            # for edge in token_data_edges[batch_i]:
+            #     if edge.sum().item() == 0:
+            #         continue
+            #     s_id = code['code_tokens']['token_ids'][batch_i][edge[0].int().item()].item()
+            #     e_id = code['code_tokens']['token_ids'][batch_i][edge[1].int().item()].item()
+            #     print(self.vocab.get_token_from_index(s_id, 'code_tokens'), end=' ')
+            #     print(self.vocab.get_token_from_index(e_id, 'code_tokens'))
+            if self.token_edge_input_being_optimized:
+                token_data_edges = self._construct_matrix_from_opt_edge_idxes(token_data_edges, code_token_mask)
+            pdg_data_loss, pdg_data_loss_mask = self.data_loss_sampler.get_loss(token_data_edges, pred_data_edge_probs)
+            pdg_data_loss *= self.pdg_data_loss_coeff
 
             final_loss += pdg_data_loss
             if self.data_metric is not None:

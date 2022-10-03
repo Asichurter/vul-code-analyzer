@@ -29,11 +29,13 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
                  tokenized_newline_char: str = 'Ċ',  # \n after tokenization by CodeBERT
                  special_tokenizer_token_handler_type: str = 'codebert',
                  only_keep_complete_lines: bool = True,
-                 unified_label: bool = True,
-                 from_raw_data: bool = True,
                  mlm_sampling_weight_strategy: str = 'uniform',
                  mlm_span_mask_strategy: str = 'none',
                  multi_vs_multi_strategy: str = 'first',
+                 hybrid_data_is_processed: bool = False,
+                 processed_tokenizer_name: str = 'microsoft/codebert-base',
+                 optimize_data_edge_input_memory: bool = True,
+                 debug: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
@@ -48,13 +50,15 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
         # self.skip_first_token_line_index = skip_first_token_line_index
         self.special_tokenizer_token_handler_type = special_tokenizer_token_handler_type
         self.only_keep_complete_lines = only_keep_complete_lines
-        self.unified_label = unified_label
-        self.from_raw_data = from_raw_data
+        self.hybrid_data_is_processed = hybrid_data_is_processed
+        self.processed_tokenizer_name = processed_tokenizer_name
+        self.optimize_data_edge_input_memory = optimize_data_edge_input_memory
         self.mlm_sampling_weight_method = dispatch_mlm_weight_gen_method(mlm_sampling_weight_strategy)
         self.mlm_span_mask_tag_gen_method = dispatch_mlm_span_mask_tag_method(mlm_span_mask_strategy)
         self.multi_vs_multi_strategy = multi_vs_multi_strategy
 
         self.actual_read_samples = 0
+        self.debug = debug
 
 
     def make_ctrl_edge_matrix(self,
@@ -101,10 +105,53 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
             s_token_idx, e_token_idx = int(s_token_idx), int(e_token_idx)
             if s_token_idx >= token_len or e_token_idx >= token_len:
                 continue
+            if s_token_idx == e_token_idx:
+                continue
+            # Set edge value to 2
             matrix[s_token_idx, e_token_idx] = 2
 
         return matrix
 
+    def make_data_edge_matrix_from_processed(self,
+                                             tokens: List[Token],
+                                             processed_data_edges: List[Tuple[int,int]]) -> torch.Tensor:
+        token_len = len(tokens)
+        # Set 1 as default to distinguish from padded positions
+        matrix = torch.ones((token_len, token_len))
+
+        for edge in processed_data_edges:
+            s_token_idx, e_token_idx = edge
+            if s_token_idx >= token_len or e_token_idx >= token_len:
+                continue
+            if s_token_idx == e_token_idx:
+                continue
+            # Set edge value to 2
+            matrix[s_token_idx, e_token_idx] = 2
+
+        return matrix
+
+    def make_data_edge_matrix_from_processed_optimized(self,
+                                                       tokens: List[Token],
+                                                       processed_data_edges: List[Tuple[int,int]]) -> torch.Tensor:
+        """
+        Compared to making matrix at loading time, here we only give the edges idxes,
+        to allow construct token matrix at run-time to avoid unaffordable memory consumption.
+        """
+        token_len = len(tokens)
+        idxes = []
+        for edge in processed_data_edges:
+            s_token_idx, e_token_idx = edge
+            if s_token_idx >= token_len or e_token_idx >= token_len:
+                continue
+            if s_token_idx == e_token_idx:
+                continue
+            idxes.append([s_token_idx, e_token_idx])
+
+        # Append a placeholder idx, to avoid key missing error when calling "batch_tensor"
+        if len(idxes) == 0:
+            idxes.append([0,0])
+
+        return torch.Tensor(idxes)
 
     def pre_handle_special_tokenizer_tokens(self, tokens: List[Token]) -> List[Token]:
         if self.special_tokenizer_token_handler_type == 'codebert':
@@ -190,7 +237,18 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
         tokenized_code = self.code_tokenizer.tokenize(raw_code)
         tokenized_code, token_line_idxes, line_count = self.truncate_and_make_line_index(tokenized_code)
         edge_matrix = self.make_ctrl_edge_matrix(line_edges, line_count)
-        data_matrix = self.make_data_edge_matrix(raw_code, token_nodes, token_edges, tokenized_code, self.multi_vs_multi_strategy)
+        # Check whether we need to process the joern-parse token data edges
+        if self.hybrid_data_is_processed:
+            if self.optimize_data_edge_input_memory:
+                data_matrix = self.make_data_edge_matrix_from_processed_optimized(tokenized_code,
+                                                                                  packed_pdg['processed_token_data_edges'][self.processed_tokenizer_name])
+            else:
+                data_matrix = self.make_data_edge_matrix_from_processed(tokenized_code,
+                                                                        packed_pdg['processed_token_data_edges'][self.processed_tokenizer_name])
+        else:
+            if self.optimize_data_edge_input_memory:
+                raise NotImplementedError
+            data_matrix = self.make_data_edge_matrix(raw_code, token_nodes, token_edges, tokenized_code, self.multi_vs_multi_strategy)
 
         # Ignore single-line code samples.
         if line_count == 1:
@@ -223,22 +281,21 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
         for vol in range(volume_range[0], volume_range[1]+1):
             logger.info('PackedHybridTokenLineReader.read', f'Reading Vol. {vol}')
 
-            # From raw data, use "self.text_to_instance"
-            if self.from_raw_data:
-                raise NotImplementedError
-            # From packed volume data pkl, also use "self.text_to_instance"
-            else:
-                vol_path = os.path.join(data_base_path, f'packed_hybrid_vol_{vol}.pkl')
-                packed_vol_data_items = read_dumped(vol_path)
-                for pdg_data_item in tqdm(packed_vol_data_items, desc='from_vol_packed_data'):
-                    try:
-                        ok, instance = self.text_to_instance(pdg_data_item)
-                        if ok:
-                            self.actual_read_samples += 1
-                            yield instance
-                    except Exception as e:
-                        logger.error('read', f'pdg-item content: {pdg_data_item}')
+            vol_path = os.path.join(data_base_path, f'packed_hybrid_vol_{vol}.pkl')
+            packed_vol_data_items = read_dumped(vol_path)
+            packed_vol_data_items = packed_vol_data_items[:100] if self.debug else packed_vol_data_items
+            for pdg_data_item in tqdm(packed_vol_data_items, desc='from_vol_packed_data'):
+                try:
+                    ok, instance = self.text_to_instance(pdg_data_item)
+                    if ok:
+                        self.actual_read_samples += 1
+                        yield instance
+                # TODO: revert
+                except FileNotFoundError as e:
+                    logger.error('read', f'error: {e}. \npdg-item content: {pdg_data_item}')
 
+        logger.info('PackedHybridLineTokenPDGDatasetReader',
+                    f'Actual samples readed: {self.actual_read_samples}')
 
 if __name__ == '__main__':
     import json
