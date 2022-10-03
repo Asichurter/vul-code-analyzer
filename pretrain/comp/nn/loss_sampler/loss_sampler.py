@@ -22,8 +22,12 @@ class LossSampler(Registrable, torch.nn.Module):
                                     predicted_matrix: torch.Tensor,
                                     edge_matrix: torch.Tensor,
                                     loss_mask: torch.Tensor) -> torch.Tensor:
+        selected_label_edge = torch.masked_select(edge_matrix, loss_mask)
+        selected_pred_edge = torch.masked_select(predicted_matrix, loss_mask)
+        loss = self.loss_func(selected_pred_edge, selected_label_edge)
+        return loss
         # Replace -1 with an arbitrary label to prevent error.
-        edge_matrix = replace_int_value(edge_matrix, -1, 0)
-        loss_matrix = self.loss_func(predicted_matrix, edge_matrix, reduction='none')
-        loss_mask = loss_mask.int()
-        return (loss_matrix * loss_mask).sum() / loss_mask.sum()
+        # edge_matrix = replace_int_value(edge_matrix, -1, 0)
+        # loss_matrix = self.loss_func(predicted_matrix, edge_matrix, reduction='none')
+        # loss_mask = loss_mask.int()
+        # return (loss_matrix * loss_mask).sum() / loss_mask.sum()
