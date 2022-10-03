@@ -153,8 +153,8 @@ class SeparatedMaskF1(Metric):
 
 @Metric.register('separated_single_mask_f1')
 class SeparatedSingleMaskF1(Metric):
-    def __init__(self):
-        self.f1 = F1Measure('masked_data')
+    def __init__(self, name):
+        self.f1 = F1Measure(name)
 
     def _check_shape(self,
                      predictions: torch.Tensor,
