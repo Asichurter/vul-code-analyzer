@@ -11,7 +11,7 @@ def clean_signature_line(code: str) -> str:
     code = re.sub(r'( |\t|\n)+', ' ', code)
     return code
 
-def convert_func_signature_to_one_line(code_path):
+def convert_func_signature_to_one_line(code_path=None, code=None, redump=True):
     """
     This function aims to convert the signature of a c/cpp function
     into the uniform one line form, with left brace in a new line.
@@ -24,15 +24,22 @@ def convert_func_signature_to_one_line(code_path):
             ...
         }
     """
-    with open(code_path, 'r') as f:
-        text = f.read()
-        left_bracket_first_idx = text.find('{')
-        signature_text = text[:left_bracket_first_idx]
-        signature_text = clean_signature_line(signature_text).strip()
-        text = signature_text + '\n' + text[left_bracket_first_idx:]
+    if code_path is not None:
+        with open(code_path, 'r') as f:
+            text = f.read()
+    else:
+        text = code
 
-    with open(code_path, 'w') as f:
-        f.write(text)
+    left_bracket_first_idx = text.find('{')
+    signature_text = text[:left_bracket_first_idx]
+    signature_text = clean_signature_line(signature_text).strip()
+    text = signature_text + '\n' + text[left_bracket_first_idx:]
+
+    if redump:
+        with open(code_path, 'w') as f:
+            f.write(text)
+    else:
+        return text
 
 def preprocess_rows(rows):
     processed_rows = []
