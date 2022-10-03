@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union, Tuple
 
 from allennlp.data import Token
 from termcolor import cprint
@@ -15,12 +15,20 @@ def paired_token_colored_print(raw_text, token_a: Token, token_b: Token, color_i
     cprint(raw_text[sorted_ranges[1][0]:sorted_ranges[1][1]], color=_colors_[color_idx], end='')
     print(raw_text[sorted_ranges[1][1]:], end='')
 
-def multi_paired_token_colored_print(raw_text: str, data_edges: List[str], tokens: List[Token]):
+def multi_paired_token_colored_print(raw_text: str, data_edges: List[Union[str,Tuple[int,int]]], tokens: List[Token], processed: bool = False):
     tokens_a, tokens_b = [], []
     for edge in data_edges:
-        sid, eid = edge.split()
-        tokens_a.append(tokens[int(sid)])
-        tokens_b.append(tokens[int(eid)])
+        if not processed:
+            sid, eid = edge.split()
+            sid, eid = int(sid), int(eid)
+        else:
+            sid, eid = edge
+        # Check token in truncated range
+        if sid >= len(tokens) or eid >= len(tokens):
+            continue
+        else:
+            tokens_a.append(tokens[sid])
+            tokens_b.append(tokens[eid])
 
     assert len(tokens_a) == len(tokens_b)
     spans_a = [(t.idx, t.idx_end, i%8) for i,t in enumerate(tokens_a)]

@@ -458,7 +458,21 @@ def translate_data_edges(data_edges: List[str],
                          tokens: List[Token]):
     for edge in data_edges:
         sid, eid = edge.split()
-        print(tokens[int(sid)], tokens[int(eid)])
+        sid, eid = int(sid), int(eid)
+        if sid >= len(tokens) or eid >= len(tokens):
+            continue
+        print(tokens[sid], tokens[eid])
+    print('*' * 50)
+
+
+def translate_processed_data_edges(data_edges: List[Tuple[int, int]],
+                                   tokens: List[Token]):
+    for edge in data_edges:
+        sid, eid = edge
+        if sid >= len(tokens) or eid >= len(tokens):
+            continue
+        print(tokens[sid], tokens[eid])
+    print('*'*50)
 
 if __name__ == '__main__':
     import time
