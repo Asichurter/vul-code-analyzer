@@ -39,9 +39,11 @@ class SeparatedBalancedSingleLossSampler(LossSampler):
     def __init__(self,
                  loss_func: LossFunc,
                  be_full_when_test: bool = False,
+                 balanced_ratio: float = 1,
                  **kwargs):
         super().__init__(loss_func, **kwargs)
         self.be_full_when_test = be_full_when_test
+        self.balanced_ratio = balanced_ratio
 
     def get_loss(self, edge_matrix: torch.Tensor, predicted_matrix: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         # Minus one to make label range [0,1].
@@ -65,7 +67,12 @@ class SeparatedBalancedSingleLossSampler(LossSampler):
             edge_mask = (edge_matrix == 1)
 
             edge_count = stat_true_count_in_batch_dim(edge_mask)
-            sampled_non_edge_mask = sample_2D_mask_by_count_along_batch_dim(non_edge_mask, edge_count)
+            non_edge_count = stat_true_count_in_batch_dim(non_edge_mask)
+            # Sampled non-edge count can not exceed the count of all non-edges
+            non_edge_sampled_count = torch.min((edge_count*self.balanced_ratio).int(), non_edge_count)
+            sampled_non_edge_mask = sample_2D_mask_by_count_along_batch_dim(non_edge_mask, non_edge_sampled_count)
+
+            # Include both non-edges and edges
             sampled_mask = sampled_non_edge_mask.bool() | edge_mask
             return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, sampled_mask), \
                    sampled_mask.view(bsz, v_num, v_num)
