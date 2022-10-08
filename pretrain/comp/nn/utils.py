@@ -54,9 +54,11 @@ def sample_2D_mask_by_count_along_batch_dim(
     # [Note]
     # Sampled items may be less than given count, since the number of total candidates implied
     # by the source mask may be less than required count.
-    sampled_idxes = torch.cat(sampled_idxes, dim=0)
-    # Set sampled positions to be 1.
-    sampled_mask[sampled_idxes[:, 0], sampled_idxes[:, 1]] = 1
+    if len(sampled_idxes) > 0:
+        sampled_idxes = torch.cat(sampled_idxes, dim=0)
+        # Set sampled positions to be 1.
+        sampled_mask[sampled_idxes[:, 0], sampled_idxes[:, 1]] = 1
+
     return sampled_mask
 
 
@@ -103,9 +105,11 @@ def multinomial_sample_2D_mask_by_count_along_batch_dim(
     # [Note]
     # Sampled items may be less than given count, since the number of total candidates implied
     # by the source mask may be less than required count.
-    sampled_idxes = torch.cat(sampled_idxes, dim=0)
-    # Set sampled positions to be 1.
-    sampled_mask[sampled_idxes[:, 0], sampled_idxes[:, 1]] = 1
+    if len(sampled_idxes) > 0:
+        sampled_idxes = torch.cat(sampled_idxes, dim=0)
+        # Set sampled positions to be 1.
+        sampled_mask[sampled_idxes[:, 0], sampled_idxes[:, 1]] = 1
+
     return sampled_mask
 
 
