@@ -2,11 +2,12 @@ from .comp.dataset_readers.packed_pdg_dataset_reader import PackedLinePDGDataset
 from .comp.dataset_readers.raw_pdg_predict_dataset_reader import RawPDGPredictDatasetReader
 from .comp.dataset_readers.packed_hybrid_ilne_token_pdg_dataset_reader import PackedHybridLineTokenPDGDatasetReader
 from .comp.nn.node_encoder.mlp_node_encoder import MLPNodeEncoder
+from .comp.nn.node_encoder.trivial_node_encoder import PassThroughNodeEncoder
 from .comp.nn.loss_sampler.unified_loss_sampler import UnifiedFullLossSampler, UnifiedBalancedLossSampler
 from .comp.nn.loss_sampler.separated_loss_sampler import SeparatedFullLossSampler, SeparatedBalancedLossSampler
 from .comp.nn.loss_sampler.separated_single_loss_sampler import SeparatedFullSingleLossSampler, SeparatedBalancedSingleLossSampler
 from .comp.nn.struct_decoder.directed.simple_unified_struct_decoder import NodeMergeUnifiedStructDecoder
-from .comp.nn.struct_decoder.directed.simple_separated_struct_decoder import BilinearSeparatedStructDecoder, BilinearSingleStructDecoder
+from .comp.nn.struct_decoder.directed.simple_separated_struct_decoder import BilinearSeparatedStructDecoder, BilinearSingleStructDecoder, ConcatLinearSingleStructDecoder
 from .comp.metric.unified_pretrain_metric import UnifiedMaskAccuracy
 from .comp.metric.separated_pretrain_metric import SeparatedMaskAccuracy, SeparatedMaskF1, SeparatedSingleMaskF1
 from .comp.nn.code_objective.mlm import MlmObjective
