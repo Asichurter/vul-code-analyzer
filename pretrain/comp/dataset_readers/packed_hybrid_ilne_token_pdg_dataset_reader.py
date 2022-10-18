@@ -103,8 +103,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
         matrix = torch.ones((line_count+1, line_count+1))
 
         for edge in line_edges:
-            tail, head = re.split(',| ', edge)   # tail/head vertice index start from 1 instead of 0
-            tail, head = int(tail), int(head)
+            tail, head = edge
             # Ignore uncovered vertices (lines)
             if tail > line_count or head > line_count:
                 continue
@@ -259,8 +258,6 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
     def text_to_instance(self, packed_pdg: Dict) -> Tuple[bool, Instance]:
         raw_code = packed_pdg['raw_code']
         line_edges = packed_pdg['line_edges']
-        token_nodes = packed_pdg['token_nodes']
-        token_edges = packed_pdg['token_edges']
         # original_total_line = packed_pdg['total_line']
 
         raw_code = self.code_cleaner.clean_code(raw_code)
@@ -278,6 +275,8 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
         else:
             if self.optimize_data_edge_input_memory:
                 raise NotImplementedError
+            token_nodes = packed_pdg['token_nodes']
+            token_edges = packed_pdg['token_edges']
             data_matrix = self.make_data_edge_matrix(raw_code, token_nodes, token_edges, tokenized_code, self.multi_vs_multi_strategy)
 
         # Ignore single-line code samples.

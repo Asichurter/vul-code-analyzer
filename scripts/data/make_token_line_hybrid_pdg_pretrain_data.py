@@ -11,7 +11,7 @@ from utils.joern_utils.joern_dev_parse import convert_func_signature_to_one_line
 raw_code_base_vol_path = '/data1/zhijietang/vul_data/datasets/docker/cppfiles/'
 line_level_data_path_temp = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_vol_data/packed_vol_{}.pkl'
 token_level_data_path_temp = '/data1/zhijietang/vul_data/datasets/docker/joern_dev_analysis_results/joern_parsed_raw_vol{}.pkl'
-tgt_dump_base_path_temp = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_line_token_hybrid_data/packed_hybrid_vol_{}.pkl'
+tgt_dump_base_path_temp = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data/packed_hybrid_vol_{}.pkl'
 # tgt_dump_base_path_temp = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data_allvs/packed_hybrid_vol_{}.pkl'
 
 multi_vs_multi_strategy = 'first'
