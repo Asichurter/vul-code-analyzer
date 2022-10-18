@@ -32,6 +32,8 @@ class PackedLinePDGDatasetReader(DatasetReader):
                  from_raw_data: bool = True,
                  mlm_sampling_weight_strategy: str = 'uniform',
                  mlm_span_mask_strategy: str = 'none',
+                 packed_mode: str = 'normal',
+                 packed_file_temp: str = 'packed_vol_{}.pkl',
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
@@ -50,6 +52,11 @@ class PackedLinePDGDatasetReader(DatasetReader):
         self.from_raw_data = from_raw_data
         self.mlm_sampling_weight_method = dispatch_mlm_weight_gen_method(mlm_sampling_weight_strategy)
         self.mlm_span_mask_tag_gen_method = dispatch_mlm_span_mask_tag_method(mlm_span_mask_strategy)
+
+        # For later packed dataset capability
+        assert packed_mode in ['normal', 'hybrid_processed']
+        self.packed_mode = packed_mode
+        self.packed_file_temp = packed_file_temp
 
         self.actual_read_samples = 0
 
@@ -171,9 +178,15 @@ class PackedLinePDGDatasetReader(DatasetReader):
                                f'\noriginal code: {original_code}')
 
     def text_to_instance(self, packed_pdg: Dict) -> Tuple[bool, Instance]:
-        code = packed_pdg['code']
-        edges = packed_pdg['edges']
-        original_total_line = packed_pdg['total_line']
+        if self.packed_mode == 'normal':
+            code = packed_pdg['code']
+            edges = packed_pdg['edges']
+            original_total_line = packed_pdg['total_line']
+        elif self.packed_mode == 'hybrid_processed':
+            code = packed_pdg['raw_code']
+            edges = packed_pdg['line_edges']
+        else:
+            raise ValueError
 
         code = self.code_cleaner.clean_code(code)
         tokenized_code = self.code_tokenizer.tokenize(code)
@@ -224,7 +237,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
 
             # From packed volume data pkl, also use "self.text_to_instance"
             else:
-                vol_path = os.path.join(data_base_path, f'packed_vol_{vol}.pkl')
+                vol_path = os.path.join(data_base_path, self.packed_file_temp.format(vol))
                 packed_vol_data_items = read_dumped(vol_path)
                 for pdg_data_item in tqdm(packed_vol_data_items, desc='from_vol_packed_data'):
                     try:
@@ -233,7 +246,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
                             self.actual_read_samples += 1
                             yield instance
                     except Exception as e:
-                        logger.error('read', f'pdg-item content: {pdg_data_item}')
+                        logger.error('read', f'Error: {e}, pdg-item content: {pdg_data_item}')
 
 
     def text_to_dict(self, packed_pdg: Dict) -> Tuple[bool, Dict]:
