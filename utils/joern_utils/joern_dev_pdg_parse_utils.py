@@ -12,6 +12,14 @@ data_def_dependency_edge_type = 'DEF'
 reaches_dependenct_edge_type = 'REACHES'
 symbol_node_type = 'Symbol'
 identifier_node_type = 'Identifier'
+cfg_entry_node_type = 'CFGEntryNode'
+cfg_exit_node_type = 'CFGExitNode'
+cfg_infinite_node_type = 'InfiniteForNode'
+cfg_exception_node_type = 'CFGExceptionNode'
+cfg_error_node_type = 'CFGErrorNode'
+cfg_ctrl_edge_exclude_node_types = [cfg_entry_node_type, cfg_exit_node_type,
+                                    cfg_infinite_node_type,
+                                    cfg_exception_node_type, cfg_error_node_type]
 
 
 def clean_signature_line(code: str) -> str:
@@ -403,6 +411,60 @@ def build_token_level_pdg_struct(raw_code: str,
 
     return token_ctrl_pdg_edges, token_data_pdg_edges
 
+
+def build_line_level_ctrl_pdg(ctrl_edges: List[Edge],
+                              pdg_nodes: List[Node],
+                              cfg_excluded_nids: List[int]=[]) -> Iterable[str]:
+    line_ctrl_pdg_edges = set()
+    for node in ctrl_edges:
+        src_nid, tgt_nid = node.sid, node.eid
+        # Do not handle edges regarding entry/exit nodes
+        if src_nid in cfg_excluded_nids or tgt_nid in cfg_excluded_nids:
+            continue
+        src_line_start, src_line_end = extract_line_num(pdg_nodes[src_nid].node_loc)
+        tgt_line_start, tgt_line_end = extract_line_num(pdg_nodes[tgt_nid].node_loc)
+        # Skip invalid line ranges
+        if src_line_start==-1 or src_line_end==-1 or tgt_line_start==-1 or tgt_line_end==-1:
+            print(f'[Warning] No valid line num extracted, skipped. \nNode1: {str(pdg_nodes[src_nid])}\nNode2: {str(pdg_nodes[tgt_nid])}')
+            continue
+        # Cartesian product of line ranges
+        for src_line in range(src_line_start, src_line_end+1):
+            for tgt_line in range(tgt_line_start, tgt_line_end+1):
+                line_ctrl_pdg_edge = f'{src_line} {tgt_line}'
+                line_ctrl_pdg_edges.add(line_ctrl_pdg_edge)
+
+    return line_ctrl_pdg_edges
+
+def build_line_level_pdg_struct(node_rows: List[List],
+                                edge_lists: List[List]):
+    # Build nodes
+    pdg_nodes: List[Optional[Node]] = [None] * (len(node_rows)+1)
+    cfg_ctrl_edge_exclude_nids = []
+    for node_row in node_rows:
+        node = Node(*node_row)
+        nid = node.nid
+        pdg_nodes[nid] = node
+        if node.node_type in cfg_ctrl_edge_exclude_node_types:
+            cfg_ctrl_edge_exclude_nids.append(nid)
+
+    # Build edges
+    ctrl_edges: List[Edge] = []
+    for edge_list in edge_lists:
+        edge = Edge.build_edge(edge_list)
+        if edge is not None:
+            if edge.is_ctrl_edge():
+                ctrl_edges.append(edge)
+
+    line_ctrl_pdg_edges = build_line_level_ctrl_pdg(ctrl_edges, pdg_nodes, cfg_ctrl_edge_exclude_nids)
+    return line_ctrl_pdg_edges, None
+
+def extract_line_num(loc_str: str):
+    if loc_str.count(':') == 4:
+        line_num_start, line_num_end, *not_used_vars = loc_str.split(':')
+        return int(line_num_start), int(line_num_end)
+    else:
+        return -1, -1
+
 def intersect_tokens_from_nids(src_nids: Iterable[int],
                                tgt_nids: Iterable[int],
                                nodes: List[Node],
@@ -476,9 +538,9 @@ def translate_processed_data_edges(data_edges: List[Tuple[int, int]],
 
 if __name__ == '__main__':
     import time
-    raw_code_path = '/data1/zhijietang/dockers/joern-dev/tests/testCode2/test2.cpp'
-    node_csv_path = '/data1/zhijietang/dockers/joern-dev/tests/parsed_testCode2/testCode2/test2.cpp/nodes.csv'
-    edge_csv_path = '/data1/zhijietang/dockers/joern-dev/tests/parsed_testCode2/testCode2/test2.cpp/edges.csv'
+    raw_code_path = '/data1/zhijietang/dockers/joern-dev/tests/testCode3/test3.cpp'
+    node_csv_path = '/data1/zhijietang/dockers/joern-dev/tests/parsed_testCode3/testCode3/test3.cpp/nodes.csv'
+    edge_csv_path = '/data1/zhijietang/dockers/joern-dev/tests/parsed_testCode3/testCode3/test3.cpp/edges.csv'
     convert_func_signature_to_one_line(raw_code_path)
     raw_code = load_text(raw_code_path)
     tokenizer = PretrainedTransformerTokenizer('microsoft/codebert-base')
@@ -488,7 +550,8 @@ if __name__ == '__main__':
     edges = read_csv_as_list(edge_csv_path)
     tokens = tokenizer.tokenize(raw_code)
     start_time = time.time()
-    ctrl_edges, data_edges = build_token_level_pdg_struct(raw_code, tokens, nodes, edges, multi_vs_multi_strategy='first')
+    token_ctrl_edges, token_data_edges = build_token_level_pdg_struct(raw_code, tokens, nodes, edges, multi_vs_multi_strategy='first')
+    line_ctrl_edges, line_data_edges = build_line_level_pdg_struct(nodes, edges)
     end_time = time.time()
     print(f'Time: {(end_time - start_time) * 1000} ms')
     # convert_func_signature_to_one_line(raw_code_path)
