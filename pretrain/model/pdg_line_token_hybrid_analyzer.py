@@ -85,6 +85,11 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
     def drop_tokenizer_special_tokens(self, embedded_code, code_mask):
         # For CodeBERT, drop <s> and </s> (first and last token)
         if self.drop_tokenizer_special_token_type.lower() == 'codebert':
+            # TODO: Here exists a potential bug:
+            #       When code is not full of the max len and padded with <pad>,
+            #       the last token may be <pad> but not </s> we want to drop.
+            #       However, avg line extraction works fine with this since </s> will be
+            #       regarded as <pad> and scattered to 0-th row to drop.
             return embedded_code[:,1:-1], code_mask[:,1:-1]
         else:
             return embedded_code, code_mask
