@@ -42,3 +42,47 @@ def multi_paired_token_colored_print(raw_text: str, data_edges: List[Union[str,T
             print(raw_text[spans[i][1]:spans[i+1][0]], end='')
         else:
             print(raw_text[spans[i][1]:], end='')
+
+def print_code_with_line_num(code: str, start_line_num: int = 0):
+    newline_idx = code.find('\n')
+    new_code = ''
+    line_count = start_line_num
+    while newline_idx != -1:
+        new_code += f'#{line_count}\t'
+        new_code += code[:newline_idx+1]
+        line_count += 1
+        code = code[newline_idx+1:]
+        newline_idx = code.find('\n')
+    new_code += code
+    print(new_code)
+
+
+if __name__ == '__main__':
+    code = '''seat_set_active_session (Seat *seat, Session *session)
+{
+    GList *link;
+    g_return_if_fail (seat != NULL);
+    SEAT_GET_CLASS (seat)->set_active_session (seat, session);
+    for (link = seat->priv->sessions; link; link = link->next)
+    {
+        Session *s = link->data;
+        if (s == session || session_get_is_stopping (s))
+            continue;
+        if (IS_GREETER (s))
+        {
+            l_debug (seat, "Stopping greeter");
+            session_stop (s);
+        }
+    }
+    if (seat->priv->active_session && 
+        seat->priv->active_session != session)
+    {
+        if (session != seat->priv->active_session && !IS_GREETER (seat->priv->active_session))
+            session_lock (seat->priv->active_session);
+        g_object_unref (seat->priv->active_session);
+    }
+    session_activate (session);
+    seat->priv->active_session = g_object_ref (session);
+}
+    '''
+    print_code_with_line_num(code)
