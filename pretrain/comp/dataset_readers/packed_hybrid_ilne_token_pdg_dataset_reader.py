@@ -324,8 +324,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
                 except FileNotFoundError as e:
                     logger.error('read', f'error: {e}. \npdg-item content: {pdg_data_item}')
 
-        logger.info('PackedHybridLineTokenPDGDatasetReader',
-                    f'Actual samples readed: {self.actual_read_samples}')
+        logger.info('reader', f'Total samples loaded: {self.actual_read_samples}')
 
 if __name__ == '__main__':
     import json

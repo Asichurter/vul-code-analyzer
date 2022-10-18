@@ -248,6 +248,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
                     except Exception as e:
                         logger.error('read', f'Error: {e}, pdg-item content: {pdg_data_item}')
 
+        logger.info('reader', f'Total {self.actual_read_samples} instances loaded')
 
     def text_to_dict(self, packed_pdg: Dict) -> Tuple[bool, Dict]:
         code = packed_pdg['code']
