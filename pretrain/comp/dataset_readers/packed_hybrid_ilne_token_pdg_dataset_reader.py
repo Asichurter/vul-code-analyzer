@@ -35,6 +35,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
                  hybrid_data_is_processed: bool = False,
                  processed_tokenizer_name: str = 'microsoft/codebert-base',
                  optimize_data_edge_input_memory: bool = True,
+                 ctrl_edge_version: str = 'v1',
                  debug: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
@@ -56,16 +57,21 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
         self.mlm_sampling_weight_method = dispatch_mlm_weight_gen_method(mlm_sampling_weight_strategy)
         self.mlm_span_mask_tag_gen_method = dispatch_mlm_span_mask_tag_method(mlm_span_mask_strategy)
         self.multi_vs_multi_strategy = multi_vs_multi_strategy
+        self.ctrl_edge_matrix_func = {
+            'v1': self.make_ctrl_edge_matrix_v1,
+            'v2': self.make_ctrl_edge_matrix_v2,
+        }[ctrl_edge_version]
 
         self.actual_read_samples = 0
         self.debug = debug
 
 
-    def make_ctrl_edge_matrix(self,
-                              line_edges: List[str],
-                              line_count: int) -> torch.LongTensor:
+    def make_ctrl_edge_matrix_v1(self,
+                                 line_edges: List[str],
+                                 line_count: int) -> torch.LongTensor:
         """
         Make line-level ctrl dependency matrix from edge data.
+        V1: Results from latest version of joern, including line-level data edges.
 
         """
         # To cover the last line (line_count-th), we have to allocate one more line here.
@@ -82,6 +88,30 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
                 matrix[tail, head] = 2
 
         # Drop 0-th row and column, since line index starts from 1.
+        return matrix[1:, 1:]
+
+    def make_ctrl_edge_matrix_v2(self,
+                                 line_edges: List[str],
+                                 line_count: int) -> torch.LongTensor:
+        """
+        Make line-level ctrl dependency matrix from edge data.
+        V2: Results from 0.3.1 version of joern, only line-level ctrl edges.
+
+        """
+        # To cover the last line (line_count-th), we have to allocate one more line here.
+        # Set 1 as default to distinguish from padded positions
+        matrix = torch.ones((line_count+1, line_count+1))
+
+        for edge in line_edges:
+            tail, head = re.split(',| ', edge)   # tail/head vertice index start from 1 instead of 0
+            tail, head = int(tail), int(head)
+            # Ignore uncovered vertices (lines)
+            if tail > line_count or head > line_count:
+                continue
+            matrix[tail, head] = 2
+
+        # Drop 0-th row and column, since line index starts from 1.
+        # Now line index start from 0.
         return matrix[1:, 1:]
 
     def make_data_edge_matrix(self,
@@ -236,7 +266,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
         raw_code = self.code_cleaner.clean_code(raw_code)
         tokenized_code = self.code_tokenizer.tokenize(raw_code)
         tokenized_code, token_line_idxes, line_count = self.truncate_and_make_line_index(tokenized_code)
-        edge_matrix = self.make_ctrl_edge_matrix(line_edges, line_count)
+        edge_matrix = self.ctrl_edge_matrix_func(line_edges, line_count)
         # Check whether we need to process the joern-parse token data edges
         if self.hybrid_data_is_processed:
             if self.optimize_data_edge_input_memory:
