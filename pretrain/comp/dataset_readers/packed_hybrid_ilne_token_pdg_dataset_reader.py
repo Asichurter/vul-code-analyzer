@@ -13,6 +13,7 @@ from utils.file import read_dumped
 from utils.pretrain_utils.mlm_mask_weight_gen import dispatch_mlm_weight_gen_method
 from utils.pretrain_utils.mlm_span_mask_utils import dispatch_mlm_span_mask_tag_method
 from utils.joern_utils.joern_dev_pdg_parse_utils import build_token_level_pdg_struct
+from utils.pretrain_utils.token_pdg_matrix_mask_utils import dispatch_token_mask_method
 
 
 @DatasetReader.register('packed_hybrid_line_token_pdg')
@@ -35,7 +36,8 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
                  hybrid_data_is_processed: bool = False,
                  processed_tokenizer_name: str = 'microsoft/codebert-base',
                  optimize_data_edge_input_memory: bool = True,
-                 ctrl_edge_version: str = 'v1',
+                 ctrl_edge_version: str = 'v1',                     # To adapt new version of ctrl edges input, only line-level ctrl edges but not data edges
+                 token_data_edge_mask_strategy: str = 'none',       # To exclude some token-pairs when calculating loss of token-data prediction, set this param
                  debug: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
@@ -61,6 +63,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
             'v1': self.make_ctrl_edge_matrix_v1,
             'v2': self.make_ctrl_edge_matrix_v2,
         }[ctrl_edge_version]
+        self.token_data_edge_mask_func = dispatch_token_mask_method(token_data_edge_mask_strategy)
 
         self.actual_read_samples = 0
         self.debug = debug
@@ -284,6 +287,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
             return False, Instance({})
 
         mlm_sampling_weights, _ = self.mlm_sampling_weight_method(raw_code, tokenized_code)
+        token_data_token_mask = self.token_data_edge_mask_func(raw_code, tokenized_code)
 
         self._check_data_correctness(raw_code, tokenized_code, token_line_idxes, line_edges)
         fields = {
@@ -293,6 +297,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
             'token_data_edges': TensorField(data_matrix),
             'vertice_num': TensorField(torch.Tensor([line_count])), # num. of line is vertice num.
             'mlm_sampling_weights': TensorField(mlm_sampling_weights),
+            'token_data_token_mask': TensorField(token_data_token_mask),
         }
 
         span_tags = self.mlm_span_mask_tag_gen_method(raw_code, tokenized_code)

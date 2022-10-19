@@ -225,6 +225,7 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
                 token_data_edges: Optional[torch.Tensor] = None,
                 mlm_sampling_weights: Optional[torch.Tensor] = None,
                 mlm_span_tags: Optional[torch.Tensor] = None,
+                token_data_token_mask: Optional[torch.Tensor] = None,
                 meta_data: Optional[List] = None,
                 **kwargs) -> Dict[str, torch.Tensor]:
         # [Outline]
@@ -306,7 +307,8 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
             #     print(self.vocab.get_token_from_index(e_id, 'code_tokens'))
             if self.token_edge_input_being_optimized:
                 token_data_edges = self._construct_matrix_from_opt_edge_idxes(token_data_edges, code_token_mask)
-            pdg_data_loss, pdg_data_loss_mask = self.data_loss_sampler.get_loss(token_data_edges, pred_data_edge_probs)
+            pdg_data_loss, pdg_data_loss_mask = self.data_loss_sampler.get_loss(token_data_edges, pred_data_edge_probs,
+                                                                                elem_mask=token_data_token_mask)
             pdg_data_loss *= self.pdg_data_loss_coeff
 
             final_loss += pdg_data_loss
