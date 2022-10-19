@@ -27,10 +27,12 @@ class SeparatedFullSingleLossSampler(LossSampler):
         assert edge_matrix.shape == predicted_matrix.shape[:3], \
             f"Unmatched shape between label edges ({edge_matrix.size()}) and predicted edges({predicted_matrix.size()})"
 
-        elem_mask_matrix = self.get_elem_mask_matrix(edge_matrix, elem_mask)
-
         # Manually operating "masked_mean"
-        loss_mask = (edge_matrix != -1).bool() & elem_mask_matrix
+        loss_mask = (edge_matrix != -1).bool()
+        # BugFix: Only do element masking at training time, make it full at testing time.
+        if self.training:
+            elem_mask_matrix = self.get_elem_mask_matrix(edge_matrix, elem_mask)
+            loss_mask = loss_mask & elem_mask_matrix
         return self.cal_matrix_masked_loss_mean(predicted_matrix, edge_matrix, loss_mask), \
                loss_mask
 
@@ -41,7 +43,6 @@ class SeparatedBalancedSingleLossSampler(LossSampler):
     This sampler balances edged pairs and non-edged pairs by sampling partial non-edged pairs
     from all the empty positions to make the have the same size.
     """
-    # TODO: This code has not been validated
     def __init__(self,
                  loss_func: LossFunc,
                  be_full_when_test: bool = False,
