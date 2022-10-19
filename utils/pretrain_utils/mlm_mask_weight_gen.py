@@ -4,7 +4,7 @@ import torch
 from allennlp.data.tokenizers import Token
 from pygments.lexers.c_cpp import CppLexer
 
-from utils.pretrain_utils.lexer_based_token_analyse_utils import lexer_filter_tokens_and_intersect_allennlp_tokens
+from utils.pretrain_utils.lexer_based_token_analyse_utils import lexer_match_tokens_and_intersect_allennlp_tokens
 
 cpp_lexer = CppLexer()
 
@@ -21,7 +21,7 @@ def basic_lexer_filter_mlm_gen_mask_weights(raw_code: str, tokens: List[Token]) 
     """
     filtered_types = ['Token.Punctuation', 'Token.Text.Whitespace',
                       'Token.Literal.String', 'Token.Operator', 'Token.Literal.Number.Integer']
-    unfiltered_indices = lexer_filter_tokens_and_intersect_allennlp_tokens(raw_code, tokens, filtered_types)
+    unfiltered_indices = lexer_match_tokens_and_intersect_allennlp_tokens(raw_code, tokens, filtered_types, is_filtered_list=True)
     weights = torch.zeros(len(tokens),)
     weights[unfiltered_indices] += 1
     return weights, unfiltered_indices
@@ -33,7 +33,7 @@ def enhanced_lexer_filter_mlm_gen_mask_weights(raw_code: str, tokens: List[Token
     Leave only Token.Name and its subtypes (not checked yet).
     """
     filtered_types = ['Token.Punctuation', 'Token.Text', 'Token.Literal', 'Token.Operator', 'Token.Comment', 'Token.Error']
-    unfiltered_indices = lexer_filter_tokens_and_intersect_allennlp_tokens(raw_code, tokens, filtered_types)
+    unfiltered_indices = lexer_match_tokens_and_intersect_allennlp_tokens(raw_code, tokens, filtered_types, is_filtered_list=True)
     weights = torch.zeros(len(tokens),)
     weights[unfiltered_indices] += 1
     return weights, unfiltered_indices

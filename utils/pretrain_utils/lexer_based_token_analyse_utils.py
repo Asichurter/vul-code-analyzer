@@ -10,7 +10,9 @@ cpp_lexer = CppLexer()
 def cpp_lexer_parse(raw_code: str):
     return list(cpp_lexer.get_tokens_unprocessed(raw_code))
 
-def get_filtered_token_span_by_cpplexer(raw_code: str, filtered_types: List[str]):
+def get_token_span_by_cpplexer(raw_code: str,
+                               token_types: List[str],
+                               is_filtered_list: bool = True):
     """
     Given raw c/cpp code, analyze with cpp lexer and return
     char spans that are not filtered by given token types.
@@ -20,15 +22,17 @@ def get_filtered_token_span_by_cpplexer(raw_code: str, filtered_types: List[str]
     lexer_token_char_span = [t[0] for t in lexer_tokens] + [len(raw_code)]
     for i,token in enumerate(lexer_tokens):
         token_type_str = str(token[1])
-        should_filtered = reduce(lambda v,e: v or re.match(e, token_type_str) is not None, filtered_types, False)
-        if not should_filtered:
+        token_type_matched = reduce(lambda v,e: v or re.match(e, token_type_str) is not None, token_types, False)
+        # Check matched and filtered relationship
+        if token_type_matched ^ is_filtered_list:
             # Left-close right-open span
             not_masked_spans.append((lexer_token_char_span[i], lexer_token_char_span[i+1]))
     return not_masked_spans
 
-def lexer_filter_tokens_and_intersect_allennlp_tokens(raw_code: str,
-                                                      allennlp_tokens: List[Token],
-                                                      filtered_types: List[str]):
+def lexer_match_tokens_and_intersect_allennlp_tokens(raw_code: str,
+                                                     allennlp_tokens: List[Token],
+                                                     token_types: List[str],
+                                                     is_filtered_list: bool = True):
     """
     Given raw code and allennlp tokenized tokens, this function first analyze
     raw code using lexer to get token types, and filter them based on given
@@ -40,7 +44,7 @@ def lexer_filter_tokens_and_intersect_allennlp_tokens(raw_code: str,
 
     Finally, indices of these intersected allennlp tokens will be returned.
     """
-    target_token_char_spans = get_filtered_token_span_by_cpplexer(raw_code, filtered_types)
+    target_token_char_spans = get_token_span_by_cpplexer(raw_code, token_types, is_filtered_list=is_filtered_list)
     span_i = 0
     allennlp_target_token_indices = []
     for token_i, token in enumerate(allennlp_tokens):
@@ -60,6 +64,7 @@ def lexer_filter_tokens_and_intersect_allennlp_tokens(raw_code: str,
         # Check if current token span ends and move to next span
         if idx_end >= cur_span[1]:
             span_i += 1
+
     return allennlp_target_token_indices
 
 
@@ -73,3 +78,10 @@ def get_token_type_char_spans(raw_code: str, token_types: List[str]) -> List[Tup
     return identifier_char_spans
 
 
+if __name__ == "__main__":
+    from allennlp.data.tokenizers import PretrainedTransformerTokenizer
+    tokenizer = PretrainedTransformerTokenizer('microsoft/codebert-base')
+    token_types = ['Token.Name']
+    code = "close_tab(GtkWidget *widget, GdkEventButton *event, display_data_t *display_data)\n{\n\tif (event->button == 3)\n\t\treturn;\n\tworking_sview_config.page_visible[display_data->extra] = false;\n\ttoggle_tab_visiblity(NULL, display_data);\n}"
+    tokens = tokenizer.tokenize(code)
+    char_spans = lexer_match_tokens_and_intersect_allennlp_tokens(code, tokens, token_types, is_filtered_list=False)
