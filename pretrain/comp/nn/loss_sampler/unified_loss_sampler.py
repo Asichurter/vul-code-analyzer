@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 
 import torch
 
@@ -14,7 +14,10 @@ class UnifiedFullLossSampler(LossSampler):
         # loss_func.ignore_index = -1
         super().__init__(loss_func, **kwargs)
 
-    def get_loss(self, edge_matrix: torch.Tensor, predicted_matrix: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_loss(self,
+                 edge_matrix: torch.Tensor,
+                 predicted_matrix: torch.Tensor,
+                 elem_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         :param edge_matrix: [batch, max_vertice, max_vertice]
         :param predicted_matrix: [batch, max_vertice, max_vertice, edge_type_num]
@@ -46,7 +49,10 @@ class UnifiedBalancedLossSampler(LossSampler):
         super().__init__(loss_func, **kwargs)
         self.be_full_when_test = be_full_when_test
 
-    def get_loss(self, edge_matrix: torch.Tensor, predicted_matrix: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_loss(self,
+                 edge_matrix: torch.Tensor,
+                 predicted_matrix: torch.Tensor,
+                 elem_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         # Drop 0-th row and column, since line index start from 1.
         # edge_matrix = edge_matrix[:, 1:, 1:]
         # Since edge matrix contains padded zeros, we minus 1 to make them to be -1,

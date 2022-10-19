@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 
 import torch
 
@@ -15,8 +15,22 @@ class LossSampler(Registrable, torch.nn.Module):
         super().__init__()
         self.loss_func = loss_func
 
-    def get_loss(self, edge_matrix: torch.Tensor, predicted_matrix: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_loss(self, edge_matrix: torch.Tensor,
+                 predicted_matrix: torch.Tensor,
+                 elem_mask: Optional[torch.Tensor] = None
+                 ) -> Tuple[torch.Tensor, torch.Tensor]:
         raise NotImplementedError
+
+    def get_elem_mask_matrix(self, edge_matrix: torch.Tensor, elem_mask: torch.Tensor):
+        # elem_mask shape: [bsz, seq]
+        if elem_mask is not None:
+            assert elem_mask.size(1) == edge_matrix.size(1), \
+                f'Unmatched shape between elem_mask({elem_mask.size(1)}) and edge_matrix({edge_matrix.size(1)})'
+            elem_matrix_mask = torch.bmm(elem_mask.unsqueeze(-1), elem_mask.unsqueeze(1)).bool()
+        else:
+            elem_matrix_mask = torch.ones_like(edge_matrix).bool()
+
+        return elem_matrix_mask
 
     def cal_matrix_masked_loss_mean(self,
                                     predicted_matrix: torch.Tensor,

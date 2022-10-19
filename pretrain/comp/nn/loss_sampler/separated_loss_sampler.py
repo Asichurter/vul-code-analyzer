@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 
 import torch
 
@@ -12,7 +12,11 @@ class SeparatedFullLossSampler(LossSampler):
     def __init__(self, loss_func: LossFunc, **kwargs):
         super().__init__(loss_func, **kwargs)
 
-    def get_loss(self, edge_matrix: torch.Tensor, predicted_matrix: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_loss(self,
+                 edge_matrix: torch.Tensor,
+                 predicted_matrix: torch.Tensor,
+                 elem_mask: Optional[torch.Tensor] = None
+                 ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         :param edge_matrix: [batch, max_vertice, max_vertice]
         :param predicted_matrix: [batch, max_vertice, max_vertice, edge_type_num]
@@ -46,7 +50,11 @@ class SeparatedBalancedLossSampler(LossSampler):
         self.be_full_when_test = be_full_when_test
         self.balanced_ratio = balanced_ratio
 
-    def get_loss(self, edge_matrix: torch.Tensor, predicted_matrix: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def get_loss(self,
+                 edge_matrix: torch.Tensor,
+                 predicted_matrix: torch.Tensor,
+                 elem_mask: Optional[torch.Tensor] = None
+                 ) -> Tuple[torch.Tensor, torch.Tensor]:
         # Drop 0-th row and column, since line index starts from 1.
         # edge_matrix = edge_matrix[:, :, 1:, 1:]
         # Minus one to make label range [0,1].
