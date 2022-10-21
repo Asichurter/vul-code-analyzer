@@ -297,14 +297,6 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
         # Check pdg loss is in range.
         elif self.check_pdg_loss_in_range(self.pdg_data_loss_range):
             # TODO: Check identifier matching
-            # batch_i = 0
-            # for edge in token_data_edges[batch_i]:
-            #     if edge.sum().item() == 0:
-            #         continue
-            #     s_id = code['code_tokens']['token_ids'][batch_i][edge[0].int().item()].item()
-            #     e_id = code['code_tokens']['token_ids'][batch_i][edge[1].int().item()].item()
-            #     print(self.vocab.get_token_from_index(s_id, 'code_tokens'), end=' ')
-            #     print(self.vocab.get_token_from_index(e_id, 'code_tokens'))
             if self.token_edge_input_being_optimized:
                 token_data_edges = self._construct_matrix_from_opt_edge_idxes(token_data_edges, code_token_mask)
             pdg_data_loss, pdg_data_loss_mask = self.data_loss_sampler.get_loss(token_data_edges, pred_data_edge_probs,
