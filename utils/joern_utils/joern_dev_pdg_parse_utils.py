@@ -120,6 +120,9 @@ class Node:
                f'func_id: {self.function_id}, child_num: {self.child_num}, is_cfg_node: {self.is_cfg_node}, ' \
                f'operator: {self.operator}, base_type: {self.base_type}, identifier: {self.identifier}'
 
+    def __repr__(self):
+        return self.__str__()
+
 # Change this list if other types of edges are of interest
 accepted_edge_types = [ast_edge_type, ctrl_dependency_edge_type,
                        data_use_dependency_edge_type, data_def_dependency_edge_type,
