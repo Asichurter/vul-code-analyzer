@@ -11,6 +11,10 @@ from allennlp.data.fields import TextField, TensorField, MetadataField
 from common.modules.code_cleaner import CodeCleaner, TrivialCodeCleaner
 from utils.file import read_dumped
 from utils import GlobalLogger as mylogger
+from utils.pretrain_utils.check import check_pretrain_code_field_correctness
+from utils.pretrain_utils.mlm_mask_weight_gen import dispatch_mlm_weight_gen_method
+from utils.pretrain_utils.mlm_span_mask_utils import dispatch_mlm_span_mask_tag_method
+
 
 @DatasetReader.register('raw_pdg_predict')
 class RawPDGPredictDatasetReader(DatasetReader):
@@ -25,8 +29,11 @@ class RawPDGPredictDatasetReader(DatasetReader):
                  special_tokenizer_token_handler_type: str = 'codebert',
                  only_keep_complete_lines: bool = True,
                  unified_label: bool = True,
+                 mlm_sampling_weight_strategy: str = 'uniform',
+                 mlm_span_mask_strategy: str = 'none',
                  identifier_key: str = 'hash',
                  meta_data_keys: Dict[str, str] = {},
+                 raw_code_key: str = 'code',
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
@@ -36,6 +43,10 @@ class RawPDGPredictDatasetReader(DatasetReader):
         self.code_max_tokens = code_max_tokens
         self.tokenized_newline_char = tokenized_newline_char
         self.code_cleaner = code_cleaner
+
+        self.mlm_sampling_weight_method = dispatch_mlm_weight_gen_method(mlm_sampling_weight_strategy)
+        self.mlm_span_mask_tag_gen_method = dispatch_mlm_span_mask_tag_method(mlm_span_mask_strategy)
+
         # self.add_EOS_token = add_EOS_token
         # self.skip_first_token_line_index = skip_first_token_line_index
         self.special_tokenizer_token_handler_type = special_tokenizer_token_handler_type
@@ -43,6 +54,7 @@ class RawPDGPredictDatasetReader(DatasetReader):
         self.unified_label = unified_label
         self.identifier_key = identifier_key
         self.meta_data_keys = meta_data_keys
+        self.raw_code_key = raw_code_key
 
         self.actual_read_samples = 0
 
@@ -138,28 +150,8 @@ class RawPDGPredictDatasetReader(DatasetReader):
         line_tokens, line_idxes = self.post_handle_special_tokenizer_tokens(line_tokens, line_idxes)
         return line_tokens, torch.LongTensor(line_idxes), current_line-1
 
-    def _check_data_correctness(self,
-                                original_code: str,
-                                tokenized_code: List[Token],
-                                line_indexes: torch.Tensor):
-        # 1. Check tokenized code
-        if self.special_tokenizer_token_handler_type == 'codebert':
-            if len(tokenized_code) == 2:
-                mylogger.error('_check_data_correctness',
-                               f'Found empty tokenized code, original code: {original_code}')
-        else:
-            mylogger.warning('_check_data_correctness', f'Unhandled tokenized type: {self.special_tokenizer_token_handler_type}')
-
-        # 2. Check consistency between code and line index
-        if self.special_tokenizer_token_handler_type == 'codebert':
-            if len(tokenized_code) - 2 != len(line_indexes):
-                mylogger.error('_check_data_correctness',
-                               f'Inconsistency found between line index and tokenized code: ' +
-                               f'code_len({len(tokenized_code)}) - 2 != index_len({len(line_indexes)}). '
-                               f'\noriginal code: {original_code}')
-
     def text_to_instance(self, packed_pdg: Dict, forward_type: str = 'mlm') -> Tuple[bool, Instance]:
-        code = packed_pdg['code']
+        code = packed_pdg[self.raw_code_key]
         if self.identifier_key is not None:
             identifier = packed_pdg[self.identifier_key]
         else:
@@ -172,7 +164,7 @@ class RawPDGPredictDatasetReader(DatasetReader):
         if line_count == 1:
             return False, Instance({})
 
-        self._check_data_correctness(code, tokenized_code, token_line_idxes)
+        check_pretrain_code_field_correctness(self.special_tokenizer_token_handler_type, code, tokenized_code, token_line_idxes)
         meta_data = {'id': identifier, 'forward_type': forward_type}
 
         # Add meta-data
