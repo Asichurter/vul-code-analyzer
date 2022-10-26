@@ -1,5 +1,7 @@
+from typing import List, Optional
+
 import torch
-from allennlp.data import TextFieldTensors, Vocabulary
+from allennlp.data import TextFieldTensors, Vocabulary, Token
 
 
 def check_identifier_matching(edges: torch.Tensor,
@@ -15,3 +17,27 @@ def check_identifier_matching(edges: torch.Tensor,
         e_id = code[namespace][token_id_key][batch_i][edge[1].int().item()].item()
         print(vocab.get_token_from_index(s_id, namespace), end=' ')
         print(vocab.get_token_from_index(e_id, namespace))
+
+from utils import GlobalLogger as mylogger
+
+def check_pretrain_code_field_correctness(special_tokenizer_token_handler_type: str,
+                                          original_code: str,
+                                          tokenized_code: List[Token],
+                                          line_indexes: torch.Tensor,
+                                          edge_matrix: Optional[torch.Tensor] = None):
+    # 1. Check tokenized code
+    if special_tokenizer_token_handler_type == 'codebert':
+        if len(tokenized_code) == 2:
+            mylogger.error('check_pretrain_code_field_correctness',
+                           f'Found empty tokenized code, original code: {original_code}')
+    else:
+        mylogger.warning('check_pretrain_code_field_correctness',
+                         f'Unhandled tokenized type: {special_tokenizer_token_handler_type}')
+
+    # 2. Check consistency between code and line index
+    if special_tokenizer_token_handler_type == 'codebert':
+        if len(tokenized_code) - 2 != len(line_indexes):
+            mylogger.error('check_pretrain_code_field_correctness',
+                           f'Inconsistency found between line index and tokenized code: ' +
+                           f'code_len({len(tokenized_code)}) - 2 != index_len({len(line_indexes)}). '
+                           f'\noriginal code: {original_code}')
