@@ -62,12 +62,23 @@ for split in range(args.cv):
         torch.cuda.empty_cache()
 
     for test_model_file_name in args.test_filenames.split(','):
+        patience = 5
         mylogger.info('reveal_cv_helper', f'Start to test Version {args.version}, Split {split}, File {test_model_file_name}')
         test_cmg = f"{python_bin} {eval_script_path} -version {args.version} -subfolder {subfolder} -subset split_{split} " \
                    f"-model_name {test_model_file_name} -data_file_name {data_file_name} -run_log_dir {args.run_log_dir} " \
                    f"-split {split} -cuda {cuda_device}"
-        subprocess.run(test_cmg, shell=True, check=True)
-    torch.cuda.empty_cache()
+
+        # Try multiple times for test script running
+        while patience > 0:
+            try:
+                subprocess.run(test_cmg, shell=True, check=True)
+                torch.cuda.empty_cache()
+                break
+            except subprocess.CalledProcessError as e:
+                mylogger.error('test', f'Error when run test script for split {split}, err: {e}')
+                patience -= 1
+        if patience == 0:
+            mylogger.error('test', f'Fail to run test for split {split}, patience runs out.')
 
 count_mean_metrics(args.run_log_dir, args.version, args.title)
 
