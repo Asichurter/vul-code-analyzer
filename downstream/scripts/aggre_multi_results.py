@@ -6,10 +6,10 @@ sys.path.append('/data1/zhijietang/projects/vul-code-analyzer')
 from utils.cmd_args import read_aggre_eval_results_args
 from utils.file import load_json
 
-def count_mean_metrics(run_log_dir, version, title):
+def count_mean_metrics(run_log_dir, version, title, cv=5):
     run_log_base_path = f'/data1/zhijietang/vul_data/run_logs/{run_log_dir}/{version}'
     metric_keys = ['Accuracy', 'AUC', 'Precision', 'Recall', 'F1-Score']
-    splits = ['rs_0', 'rs_1', 'rs_2', 'rs_3', 'rs_4']
+    splits = [f'rs_{i}'for i in range(cv)]
 
     metrics = {k:[] for k in metric_keys}
     for split in splits:

@@ -80,7 +80,7 @@ for split in range(args.cv):
         if patience == 0:
             mylogger.error('test', f'Fail to run test for split {split}, patience runs out.')
 
-count_mean_metrics(args.run_log_dir, args.version, args.title)
+count_mean_metrics(args.run_log_dir, args.version, args.title, args.cv)
 
 # Exit to release GPU memory
 sys.exit(0)
