@@ -19,7 +19,6 @@ from downstream import *
 from common import *
 
 args = read_reveal_cv_train_from_config_args()
-subfolder = 'common'
 data_file_name = 'test.json'
 
 converted_json_file_path = '/data1/zhijietang/temp/config.json'
@@ -64,7 +63,7 @@ for split in range(args.cv):
     for test_model_file_name in args.test_filenames.split(','):
         patience = 5
         mylogger.info('reveal_cv_helper', f'Start to test Version {args.version}, Split {split}, File {test_model_file_name}')
-        test_cmg = f"{python_bin} {eval_script_path} -version {args.version} -subfolder {subfolder} -subset split_{split} " \
+        test_cmg = f"{python_bin} {eval_script_path} -version {args.version} -subfolder {args.subfolder} -subset split_{split} " \
                    f"-model_name {test_model_file_name} -data_file_name {data_file_name} -run_log_dir {args.run_log_dir} " \
                    f"-split {split} -cuda {cuda_device}"
 

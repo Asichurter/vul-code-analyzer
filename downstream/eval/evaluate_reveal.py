@@ -29,7 +29,7 @@ subfolder = args.subfolder
 run_log_dir = args.run_log_dir
 split = args.split
 
-data_base_path = f"/data1/zhijietang/vul_data/datasets/reveal/{subfolder}/random_split/{subset}/"
+data_base_path = f"/data1/zhijietang/vul_data/datasets/reveal/{subfolder}/{subset}/"
 data_file_path = data_base_path + data_file_name
 model_base_path = f'/data1/zhijietang/vul_data/run_logs/{run_log_dir}/{version}/rs_{split}/'
 model_path = model_base_path + model_name
