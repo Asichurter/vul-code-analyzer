@@ -14,6 +14,7 @@ from pretrain.comp.nn.loss_sampler.loss_sampler import LossSampler
 from pretrain.comp.nn.node_encoder.node_encoder import NodeEncoder
 from pretrain.comp.nn.code_objective.code_objective import CodeObjective
 from pretrain.comp.nn.struct_decoder.struct_decoder import StructDecoder
+from utils.allennlp_utils.tokenizer_vocab_sensitive_utils import drop_tokenizer_special_tokens
 
 
 @Model.register('code_line_pdg_analyzer')
@@ -68,13 +69,6 @@ class CodeLinePDGAnalyzer(Model):
         assert as_code_embedder_count < 2, f'Found {as_code_embedder_count} objectives as code embedder (as most 1 allowed)'
         self.any_as_code_embedder = as_code_embedder_count > 0
 
-    def drop_tokenizer_special_tokens(self, embedded_code, code_mask):
-        # For CodeBERT, drop <s> and </s> (first and last token)
-        if self.drop_tokenizer_special_token_type.lower() == 'codebert':
-            return embedded_code[:,1:-1], code_mask[:,1:-1]
-        else:
-            return embedded_code, code_mask
-
     def embed_encode_code(self, code: TextFieldTensors):
         # num_wrapping_dim = dim_num - 2
         num_wrapping_dim = 0
@@ -98,7 +92,7 @@ class CodeLinePDGAnalyzer(Model):
                                ) -> Tuple[torch.Tensor,torch.Tensor]:
         # Move the dropping of tokenizer special tokens here, since it only
         # has influence on line-feature extraction.
-        code_features, code_mask = self.drop_tokenizer_special_tokens(code_features, code_mask)
+        code_features, code_mask = drop_tokenizer_special_tokens(self.drop_tokenizer_special_token_type, code_features, code_mask)
         line_features, line_mask = self.line_extractor(code_features, code_mask,
                                                        line_idxes, vertice_num)
         return line_features, line_mask

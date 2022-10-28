@@ -8,6 +8,7 @@ from common.nn.activation_builder import build_activation
 from pretrain.comp.nn.code_objective.code_objective import CodeObjective
 from pretrain.comp.nn.utils import stat_true_count_in_batch_dim, sample_2D_mask_by_count_along_batch_dim, \
     multinomial_sample_2D_mask_by_count_along_batch_dim
+from utils.allennlp_utils.tokenizer_vocab_sensitive_utils import sample_replace_tokens, get_mask_of_token_to_be_masked
 
 
 @CodeObjective.register('mlm')
@@ -55,13 +56,6 @@ class MlmObjective(CodeObjective):
 
         # self.mask_token_id = self.vocab.get_token_index(mask_token, self.code_namespace)
 
-
-    def get_mask_of_token_to_be_masked(self, token_ids: torch.Tensor) -> torch.Tensor:
-        if self.tokenizer_type == 'codebert':
-            return token_ids.gt(2)
-        else:
-            raise NotImplementedError(f"Tokenizer type: {self.tokenizer_type}")
-
     def _random_select_mask_action(self, sampled_mask: torch.Tensor):
         sampled_indexes = sampled_mask.nonzero()
         sampled_size = sampled_indexes.size(0)
@@ -91,8 +85,11 @@ class MlmObjective(CodeObjective):
 
     def _replace_tokens(self, token_ids: torch.Tensor, mask: torch.Tensor):
         replace_idxes = mask.nonzero()
-        replaced_token_ids = self._sample_tokens(size=replace_idxes.size(0),
-                                                 device=token_ids.device)
+        # replaced_token_ids = self._sample_tokens(size=replace_idxes.size(0),
+        #                                          device=token_ids.device)
+        replaced_token_ids = sample_replace_tokens(self.tokenizer_type, self.vocab, self.code_namespace,
+                                                   size=replace_idxes.size(0),
+                                                   device=token_ids.device)
         token_ids[replace_idxes[:,0], replace_idxes[:,1]] = replaced_token_ids
         return token_ids
 
@@ -100,6 +97,9 @@ class MlmObjective(CodeObjective):
         if self.tokenizer_type == 'codebert':
             # Exclude <s>, </s>, <pad> and <MLM> tokens.
             low, high = 3, self.vocab.get_vocab_size(self.code_namespace)
+        # For unixcoder-nine, first 100 items are special tokens, tokens after #50000 are ast tokens
+        elif self.tokenizer_type == 'unixcoder_nine':
+            low, high = 120, 50000
         else:
             raise NotImplementedError
 
@@ -125,7 +125,7 @@ class MlmObjective(CodeObjective):
         - original_sampled_token_ids: Real token id labels of these masked(replaced) tokens, for producing mlm loss.
         """
         token_ids = code[self.code_namespace][self.token_id_key]
-        candidate_mask = self.get_mask_of_token_to_be_masked(token_ids)
+        candidate_mask = get_mask_of_token_to_be_masked(self.tokenizer_type, token_ids)
 
         token_count = stat_true_count_in_batch_dim(candidate_mask)
         sampled_count = (token_count * self.sample_ratio).int()
