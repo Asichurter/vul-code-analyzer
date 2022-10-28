@@ -9,7 +9,10 @@ from allennlp.data.dataset_readers import DatasetReader
 from allennlp.data.fields import TextField, TensorField
 
 from common.modules.code_cleaner import CodeCleaner, TrivialCodeCleaner
+from utils.allennlp_utils.tokenizer_vocab_sensitive_utils import pre_handle_special_tokenizer_tokens, \
+    post_handle_special_tokenizer_tokens
 from utils.file import read_dumped
+from utils.pretrain_utils.check import check_pretrain_code_field_correctness
 from utils.pretrain_utils.mlm_mask_weight_gen import dispatch_mlm_weight_gen_method
 from utils.pretrain_utils.mlm_span_mask_utils import dispatch_mlm_span_mask_tag_method
 
@@ -34,6 +37,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
                  mlm_span_mask_strategy: str = 'none',
                  packed_mode: str = 'normal',
                  packed_file_temp: str = 'packed_vol_{}.pkl',
+                 model_mode: Optional[str] = None,
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
@@ -57,6 +61,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
         assert packed_mode in ['normal', 'hybrid_processed']
         self.packed_mode = packed_mode
         self.packed_file_temp = packed_file_temp
+        self.model_mode = model_mode
 
         self.actual_read_samples = 0
 
@@ -104,25 +109,6 @@ class PackedLinePDGDatasetReader(DatasetReader):
             return matrix[:, 1:, 1:]
 
 
-    def pre_handle_special_tokenizer_tokens(self, tokens: List[Token]) -> List[Token]:
-        if self.special_tokenizer_token_handler_type == 'codebert':
-            return tokens[1:-1]
-        else:
-            return tokens
-
-
-    def post_handle_special_tokenizer_tokens(self,
-                                             tokens: List[Token],
-                                             line_idxes: List[int]
-                                             ) -> Tuple:
-        if self.special_tokenizer_token_handler_type == 'codebert':
-            tokens.insert(0, Token('<s>'))
-            tokens.append(Token('</s>'))
-        else:
-            pass
-        return tokens, line_idxes
-
-
     def truncate_and_make_line_index(self, tokens: List[Token]) -> Tuple[List[Token],torch.Tensor,int]:
         """
         Truncate code tokens based on max_lines and max_tokens and determine line index for each token after tokenization.
@@ -133,7 +119,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
         line_tokens = []
         current_line = 1        # line_index start from 1, to distinguish from padded zeros
         current_column = 0
-        tokens = self.pre_handle_special_tokenizer_tokens(tokens)
+        tokens = pre_handle_special_tokenizer_tokens(self.special_tokenizer_token_handler_type, tokens)
 
         for i, token in enumerate(tokens):
             line_idxes.append([current_line, current_column])   # 2D line-column index
@@ -152,30 +138,10 @@ class PackedLinePDGDatasetReader(DatasetReader):
                 line_tokens = line_tokens[:-current_column]
                 line_idxes = line_idxes[:-current_column]
 
-        line_tokens, line_idxes = self.post_handle_special_tokenizer_tokens(line_tokens, line_idxes)
+        line_tokens, line_idxes = post_handle_special_tokenizer_tokens(self.special_tokenizer_token_handler_type, (line_tokens,), line_idxes,
+                                                                       mode=self.model_mode)
         return line_tokens, torch.LongTensor(line_idxes), current_line-1
 
-    def _check_data_correctness(self,
-                                original_code: str,
-                                tokenized_code: List[Token],
-                                line_indexes: torch.Tensor,
-                                edge_matrix: torch.Tensor):
-        from utils import GlobalLogger as mylogger
-        # 1. Check tokenized code
-        if self.special_tokenizer_token_handler_type == 'codebert':
-            if len(tokenized_code) == 2:
-                mylogger.error('_check_data_correctness',
-                               f'Found empty tokenized code, original code: {original_code}')
-        else:
-            mylogger.warning('_check_data_correctness', f'Unhandled tokenized type: {self.special_tokenizer_token_handler_type}')
-
-        # 2. Check consistency between code and line index
-        if self.special_tokenizer_token_handler_type == 'codebert':
-            if len(tokenized_code) - 2 != len(line_indexes):
-                mylogger.error('_check_data_correctness',
-                               f'Inconsistency found between line index and tokenized code: ' +
-                               f'code_len({len(tokenized_code)}) - 2 != index_len({len(line_indexes)}). '
-                               f'\noriginal code: {original_code}')
 
     def text_to_instance(self, packed_pdg: Dict) -> Tuple[bool, Instance]:
         if self.packed_mode == 'normal':
@@ -198,7 +164,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
 
         mlm_sampling_weights, _ = self.mlm_sampling_weight_method(code, tokenized_code)
 
-        self._check_data_correctness(code, tokenized_code, token_line_idxes, edges)
+        check_pretrain_code_field_correctness(self.special_tokenizer_token_handler_type, code, tokenized_code, token_line_idxes, edges)
         fields = {
             'code': TextField(tokenized_code, self.code_token_indexers),
             'line_idxes': TensorField(token_line_idxes),
@@ -263,7 +229,7 @@ class PackedLinePDGDatasetReader(DatasetReader):
         if line_count == 1:
             return False, {}
 
-        self._check_data_correctness(code, tokenized_code, token_line_idxes, edges)
+        check_pretrain_code_field_correctness(self.special_tokenizer_token_handler_type, code, tokenized_code, token_line_idxes, edges)
         data_dict = {
             'code': tokenized_code,
             'line_idxes': token_line_idxes,
