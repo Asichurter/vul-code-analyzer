@@ -3,6 +3,7 @@ import argparse
 def read_train_from_config_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-config', type=str, default='', help='config path of training')
+    parser.add_argument('--disable_friendly_logging', action='store_true', help='whether to disable file_friendly_logging of allennlp.train')
     return parser.parse_args()
 
 def read_reveal_cv_train_from_config_args():
@@ -16,6 +17,7 @@ def read_reveal_cv_train_from_config_args():
     parser.add_argument('-eval_script', type=str, default='evaluate_reveal.py', help='model file names after training, splitted by comma')
     parser.add_argument('-title', type=str, default='', help='title for reporting cv results')
     parser.add_argument('--no_train', action='store_true', help='whether do train from scratch')
+    parser.add_argument('--disable_friendly_logging', action='store_true', help='whether to disable file_friendly_logging of allennlp.train')
     return parser.parse_args()
 
 def read_reveal_eval_args():

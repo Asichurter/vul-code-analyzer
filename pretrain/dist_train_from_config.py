@@ -36,6 +36,6 @@ if __name__ == '__main__':
         converted_json_file_path,
         serialization_dir,
         force=True,
-        file_friendly_logging=True,
+        file_friendly_logging=not args.disable_friendly_logging,
         include_package=['dist_importing'],   # all needed models can be imported within a single __init__ of a module
     )
