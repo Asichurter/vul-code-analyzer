@@ -10,6 +10,7 @@ from allennlp.nn.util import get_text_field_mask
 
 from pretrain.comp.nn.code_objective.code_objective import CodeObjective
 from pretrain.comp.nn.line_extractor import LineExtractor, AvgLineExtractor
+from utils.allennlp_utils.tokenizer_vocab_sensitive_utils import drop_tokenizer_special_tokens
 
 
 @Model.register('code_objective_trainer')
@@ -54,13 +55,6 @@ class CodeObjectiveTrainer(Model):
 
         assert as_code_embedder_count < 2, f'Found {as_code_embedder_count} objectives as code embedder (as most 1 allowed)'
         self.any_as_code_embedder = as_code_embedder_count > 0
-
-    def drop_tokenizer_special_tokens(self, embedded_code, code_mask):
-        # For CodeBERT, drop <s> and </s> (first and last token)
-        if self.drop_tokenizer_special_token_type.lower() == 'codebert':
-            return embedded_code[:,1:-1], code_mask[:,1:-1]
-        else:
-            return embedded_code, code_mask
 
     def embed_encode_code(self, code: TextFieldTensors):
         # num_wrapping_dim = dim_num - 2
@@ -153,7 +147,8 @@ class CodeObjectiveTrainer(Model):
         elif forward_type == 'line_features':
             encoded_code_outputs = self.embed_encode_code(code)
             # 7.22 Fix grad mismatch bug: Forget to drop tokenizer tokens.
-            code_token_features, code_token_mask = self.drop_tokenizer_special_tokens(
+            code_token_features, code_token_mask = drop_tokenizer_special_tokens(
+                self.drop_tokenizer_special_token_type,
                 encoded_code_outputs['outputs'],
                 encoded_code_outputs['mask']
             )
@@ -185,7 +180,8 @@ class CodeObjectiveTrainer(Model):
                               **kwargs):
         encoded_code_outputs = self.embed_encode_code(code)
         # 7.22 Fix grad mismatch bug: Forget to drop tokenizer tokens.
-        code_token_features, code_token_mask = self.drop_tokenizer_special_tokens(
+        code_token_features, code_token_mask = drop_tokenizer_special_tokens(
+            self.drop_tokenizer_special_token_type,
             encoded_code_outputs['outputs'],
             encoded_code_outputs['mask']
         )

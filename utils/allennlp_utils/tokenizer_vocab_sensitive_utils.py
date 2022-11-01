@@ -20,10 +20,18 @@ def pre_handle_special_tokenizer_tokens(special_tokenizer_token_handler_type: st
 
 _unixcoder_modes = ["<encoder-decoder>", "<encoder-only>", "<decoder-only>"]
 
+def make_unixcoder_input(token_input_list: Iterable[List[Token]], mode: str):
+    assert mode is not None and mode in _unixcoder_modes
+    # Format reference: https://github.com/microsoft/CodeBERT/issues/178
+    tokens = [Token('<s>'), Token(mode), Token('</s>')]
+    for token_list in token_input_list:
+        tokens.extend(token_list + [Token('</s>')])
+    return tokens
+
 def post_handle_special_tokenizer_tokens(special_tokenizer_token_handler_type: str,
                                          token_inputs: Iterable[List[Token]],
-                                         line_idxes: List,
-                                         mode=None) -> Tuple:
+                                         line_idxes: Optional[List] = None,
+                                         mode: Optional[str] = None) -> Tuple:
     """
         Revert special tokens to make input for pre-trained model.
     """
@@ -32,11 +40,7 @@ def post_handle_special_tokenizer_tokens(special_tokenizer_token_handler_type: s
         for token_list in token_inputs:
             tokens.extend(token_list + [Token('</s>')])
     elif special_tokenizer_token_handler_type in unixcoder_families:
-        assert mode is not None and mode in _unixcoder_modes
-        # Format reference: https://github.com/microsoft/CodeBERT/issues/178
-        tokens = [Token('<s>'), Token(mode), Token('</s>')]
-        for token_list in token_inputs:
-            tokens.extend(token_list + [Token('</s>')])
+        tokens = make_unixcoder_input(token_inputs, mode)
     else:
         raise NotImplementedError
 
@@ -77,3 +81,11 @@ def sample_replace_tokens(tokenizer_type: str,
         raise NotImplementedError
 
     return torch.randint(low, high, (size,), device=device, dtype=torch.long)
+
+def get_mask_of_token_to_be_masked(tokenizer_type: str, token_ids: torch.Tensor) -> torch.Tensor:
+    if tokenizer_type in codebert_families:
+        return token_ids.gt(2)
+    elif tokenizer_type in unixcoder_families:
+        return token_ids.gt(118) & token_ids.lt(50000)
+    else:
+        raise NotImplementedError(f"Tokenizer type: {tokenizer_type}")

@@ -9,6 +9,8 @@ from allennlp.data.dataset_readers import DatasetReader
 from allennlp.data.fields import TextField, TensorField, MetadataField
 
 from common.modules.code_cleaner import CodeCleaner, TrivialCodeCleaner
+from utils.allennlp_utils.tokenizer_vocab_sensitive_utils import pre_handle_special_tokenizer_tokens, \
+    post_handle_special_tokenizer_tokens
 from utils.file import read_dumped
 from utils import GlobalLogger as mylogger
 from utils.pretrain_utils.check import check_pretrain_code_field_correctness
@@ -34,6 +36,7 @@ class RawPDGPredictDatasetReader(DatasetReader):
                  identifier_key: str = 'hash',
                  meta_data_keys: Dict[str, str] = {},
                  raw_code_key: str = 'code',
+                 model_mode: Optional[str] = None,
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
@@ -55,6 +58,7 @@ class RawPDGPredictDatasetReader(DatasetReader):
         self.identifier_key = identifier_key
         self.meta_data_keys = meta_data_keys
         self.raw_code_key = raw_code_key
+        self.model_mode = model_mode
 
         self.actual_read_samples = 0
 
@@ -100,23 +104,6 @@ class RawPDGPredictDatasetReader(DatasetReader):
         else:
             return matrix[:, 1:, 1:]
 
-    def pre_handle_special_tokenizer_tokens(self, tokens: List[Token]) -> List[Token]:
-        if self.special_tokenizer_token_handler_type == 'codebert':
-            return tokens[1:-1]
-        else:
-            return tokens
-
-
-    def post_handle_special_tokenizer_tokens(self,
-                                             tokens: List[Token],
-                                             line_idxes: List[int]
-                                             ) -> Tuple:
-        if self.special_tokenizer_token_handler_type == 'codebert':
-            tokens.insert(0, Token('<s>'))
-            tokens.append(Token('</s>'))
-        else:
-            pass
-        return tokens, line_idxes
 
     def truncate_and_make_line_index(self, tokens: List[Token]) -> Tuple[List[Token],torch.Tensor,int]:
         """
@@ -128,7 +115,7 @@ class RawPDGPredictDatasetReader(DatasetReader):
         line_tokens = []
         current_line = 1        # line_index start from 1, to distinguish from padded zeros
         current_column = 0
-        tokens = self.pre_handle_special_tokenizer_tokens(tokens)
+        tokens = pre_handle_special_tokenizer_tokens(self.special_tokenizer_token_handler_type, tokens)
 
         for i, token in enumerate(tokens):
             line_idxes.append([current_line, current_column])   # 2D line-column index
@@ -147,7 +134,8 @@ class RawPDGPredictDatasetReader(DatasetReader):
                 line_tokens = line_tokens[:-current_column]
                 line_idxes = line_idxes[:-current_column]
 
-        line_tokens, line_idxes = self.post_handle_special_tokenizer_tokens(line_tokens, line_idxes)
+        line_tokens, line_idxes = post_handle_special_tokenizer_tokens(self.special_tokenizer_token_handler_type, (line_tokens,), line_idxes,
+                                                                       mode=self.model_mode)
         return line_tokens, torch.LongTensor(line_idxes), current_line-1
 
     def text_to_instance(self, packed_pdg: Dict, forward_type: str = 'mlm') -> Tuple[bool, Instance]:

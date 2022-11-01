@@ -9,6 +9,8 @@ from allennlp.data.dataset_readers import DatasetReader
 from allennlp.data.fields import TextField, TensorField
 
 from common.modules.code_cleaner import CodeCleaner, TrivialCodeCleaner
+from utils.allennlp_utils.tokenizer_vocab_sensitive_utils import pre_handle_special_tokenizer_tokens, \
+    post_handle_special_tokenizer_tokens
 from utils.file import read_dumped
 from utils.pretrain_utils.check import check_pretrain_code_field_correctness
 from utils.pretrain_utils.mlm_mask_weight_gen import dispatch_mlm_weight_gen_method
@@ -39,6 +41,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
                  optimize_data_edge_input_memory: bool = True,
                  ctrl_edge_version: str = 'v1',                     # To adapt new version of ctrl edges input, only line-level ctrl edges but not data edges
                  token_data_edge_mask_strategy: str = 'none',       # To exclude some token-pairs when calculating loss of token-data prediction, set this param
+                 model_mode: Optional[str] = None,
                  debug: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
@@ -65,6 +68,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
             'v2': self.make_ctrl_edge_matrix_v2,
         }[ctrl_edge_version]
         self.token_data_edge_mask_func = dispatch_token_mask_method(token_data_edge_mask_strategy)
+        self.model_mode = model_mode
 
         self.actual_read_samples = 0
         self.debug = debug
@@ -186,24 +190,6 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
 
         return torch.Tensor(idxes)
 
-    def pre_handle_special_tokenizer_tokens(self, tokens: List[Token]) -> List[Token]:
-        if self.special_tokenizer_token_handler_type == 'codebert':
-            return tokens[1:-1]
-        else:
-            return tokens
-
-
-    def post_handle_special_tokenizer_tokens(self,
-                                             tokens: List[Token],
-                                             line_idxes: List[int]
-                                             ) -> Tuple:
-        if self.special_tokenizer_token_handler_type == 'codebert':
-            tokens.insert(0, Token('<s>'))
-            tokens.append(Token('</s>'))
-        else:
-            pass
-        return tokens, line_idxes
-
 
     def truncate_and_make_line_index(self, tokens: List[Token]) -> Tuple[List[Token],torch.Tensor,int]:
         """
@@ -215,7 +201,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
         line_tokens = []
         current_line = 1        # line_index start from 1, to distinguish from padded zeros
         current_column = 0
-        tokens = self.pre_handle_special_tokenizer_tokens(tokens)
+        tokens = pre_handle_special_tokenizer_tokens(self.special_tokenizer_token_handler_type, tokens)
 
         for i, token in enumerate(tokens):
             line_idxes.append([current_line, current_column])   # 2D line-column index
@@ -225,6 +211,8 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
                 current_line += 1
                 current_column = 0
             # truncate code tokens if exceeding max_lines or max_tokens
+            # NOTE: Since post-handle may not be the invert operation of pre-handle, the number of
+            #       max tokens here may be slightly different from the given number.
             if current_line > self.max_lines or len(line_tokens) == self.code_max_tokens:
                 break
 
@@ -234,7 +222,8 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
                 line_tokens = line_tokens[:-current_column]
                 line_idxes = line_idxes[:-current_column]
 
-        line_tokens, line_idxes = self.post_handle_special_tokenizer_tokens(line_tokens, line_idxes)
+        line_tokens, line_idxes = post_handle_special_tokenizer_tokens(self.special_tokenizer_token_handler_type, (line_tokens,), line_idxes,
+                                                                       mode=self.model_mode)
         return line_tokens, torch.LongTensor(line_idxes), current_line-1
 
 
