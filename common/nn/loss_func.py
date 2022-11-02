@@ -119,9 +119,8 @@ def binary_focal_loss(probs, labels, loss_tensor, gamma=2, class_weight=None):
                          Note if None is given, both classes will have weight=1 but not 0.5
     """
     modulating_factor = (probs - labels) ** gamma
-    label_adapt_term = ((-1) ** labels) ** gamma      # For gamma is even, no need for this term
-    non_balanced_focal_loss = label_adapt_term * modulating_factor * loss_tensor
-    assert torch.all(non_balanced_focal_loss > 0), 'Fatal error of focal loss, negative loss term found (maybe a bug)'
+    non_balanced_focal_loss = torch.abs(modulating_factor * loss_tensor)
+    assert torch.all(non_balanced_focal_loss >= 0), 'Fatal error of focal loss, negative loss term found (maybe a bug)'
 
     if class_weight is not None:
         class_weight_alphas = torch.index_select(class_weight, 0, labels.long())
@@ -134,11 +133,11 @@ def binary_focal_loss(probs, labels, loss_tensor, gamma=2, class_weight=None):
 class BCEFocalLoss(LossFunc):
     # TODO: BceFocalLoss function has not been validated...
     def __init__(self,
-                 gamma: float = 2,
+                 gamma: int = 2,
                  positive_loss_weight: Optional[float] = None):
         super().__init__()
         self.gamma = gamma
-        self.loss_weight = torch.FloatTensor([1-positive_loss_weight, positive_loss_weight], requires_grad=False) \
+        self.loss_weight = torch.FloatTensor([1-positive_loss_weight, positive_loss_weight]) \
                             if positive_loss_weight is not None else positive_loss_weight
 
     def _to_cuda_device_as(self, tgt_tensor, src_tensor):
@@ -147,5 +146,5 @@ class BCEFocalLoss(LossFunc):
         return tgt_tensor.to(src_tensor.device)
 
     def forward(self, pred: torch.Tensor, label: torch.Tensor, **kwargs) -> torch.Tensor:
-        loss_tensor = torch.nn.functional.binary_cross_entropy(pred, label.float(), **kwargs)  # float type tensor is expected for 'label'
-        return binary_focal_loss(pred, label, loss_tensor, self.gamπma, self._to_cuda_device_as(self.loss_weight, loss_tensor))
+        loss_tensor = torch.nn.functional.binary_cross_entropy(pred, label.float(), reduction='none', **kwargs)  # float type tensor is expected for 'label'
+        return binary_focal_loss(pred, label, loss_tensor, self.gamma, self._to_cuda_device_as(self.loss_weight, loss_tensor))
