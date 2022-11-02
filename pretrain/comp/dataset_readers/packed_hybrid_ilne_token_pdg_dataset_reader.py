@@ -287,7 +287,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
             vol_path = os.path.join(data_base_path, f'packed_hybrid_vol_{vol}.pkl')
             packed_vol_data_items = read_dumped(vol_path)
             packed_vol_data_items = packed_vol_data_items[:100] if self.debug else packed_vol_data_items
-            for pdg_data_item in tqdm(packed_vol_data_items, desc='from_vol_packed_data'):
+            for pdg_data_item in packed_vol_data_items:
                 try:
                     ok, instance = self.text_to_instance(pdg_data_item)
                     if ok:
