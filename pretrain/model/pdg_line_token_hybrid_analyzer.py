@@ -9,6 +9,7 @@ from allennlp.modules import TextFieldEmbedder, Seq2SeqEncoder
 from allennlp.nn.util import get_text_field_mask
 from allennlp.training.metrics import Metric
 
+from pretrain.comp.metric.objective_pretrain_metric import ObjectiveLoss
 from pretrain.comp.nn.line_extractor import LineExtractor
 from pretrain.comp.nn.loss_sampler.loss_sampler import LossSampler
 from pretrain.comp.nn.node_encoder.node_encoder import NodeEncoder
@@ -40,6 +41,7 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
         pdg_ctrl_loss_range: List[int] = [-1,-1],
         pdg_data_loss_range: List[int] = [-1,-1],
         token_edge_input_being_optimized: bool = False,
+        add_pdg_loss_metric: bool = False,
         **kwargs
     ):
         super().__init__(vocab, **kwargs)
@@ -65,8 +67,13 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
         self.pdg_ctrl_loss_range = pdg_ctrl_loss_range
         self.pdg_data_loss_range = pdg_data_loss_range
         self.token_edge_input_being_optimized = token_edge_input_being_optimized
-        self.cur_epoch = 0
 
+        self.add_pdg_loss_metric = add_pdg_loss_metric
+        if add_pdg_loss_metric:
+            self.pdg_ctrl_metric = ObjectiveLoss('pdg_ctrl')
+            self.pdg_data_metric = ObjectiveLoss('pdg_data')
+
+        self.cur_epoch = 0
         self.test = 0
 
     def preprocess_pretrain_objectives(self, objectives: List[Lazy[CodeObjective]], vocab: Vocabulary):
@@ -272,6 +279,8 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
             final_loss += pdg_ctrl_loss
             if self.ctrl_metric is not None:
                 self.ctrl_metric(pred_ctrl_edge_labels, line_ctrl_edges, pdg_ctrl_loss_mask)
+            if self.add_pdg_loss_metric:
+                self.pdg_ctrl_metric(pdg_ctrl_loss)
             returned_dict.update({
                 'ctrl_edge_logits': pred_ctrl_edge_probs,
                 'ctrl_edge_labels': pred_ctrl_edge_labels,
@@ -294,6 +303,8 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
             final_loss += pdg_data_loss
             if self.data_metric is not None:
                 self.data_metric(pred_data_edge_labels, token_data_edges, pdg_data_loss_mask)
+            if self.add_pdg_loss_metric:
+                self.pdg_data_metric(pdg_data_loss)
             returned_dict.update({
                 'data_edge_logits': pred_data_edge_probs,
                 'data_edge_labels': pred_data_edge_labels,
@@ -323,5 +334,11 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
             for obj in obj_list:
                 ctrl_metric = obj.get_metric(reset)
                 metrics.update(ctrl_metric)
+
+        if self.add_pdg_loss_metric:
+            pdg_ctrl_loss_metric = self.pdg_ctrl_metric.get_metric(reset)
+            pdg_data_loss_metric = self.pdg_data_metric.get_metric(reset)
+            metrics.update(pdg_ctrl_loss_metric)
+            metrics.update(pdg_data_loss_metric)
 
         return metrics
