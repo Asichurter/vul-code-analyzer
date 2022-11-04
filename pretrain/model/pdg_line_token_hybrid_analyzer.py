@@ -15,6 +15,7 @@ from pretrain.comp.nn.loss_sampler.loss_sampler import LossSampler
 from pretrain.comp.nn.node_encoder.node_encoder import NodeEncoder
 from pretrain.comp.nn.code_objective.code_objective import CodeObjective
 from pretrain.comp.nn.struct_decoder.struct_decoder import StructDecoder
+from pretrain.comp.nn.utils import construct_matrix_from_opt_edge_idxes
 from utils.allennlp_utils.tokenizer_vocab_sensitive_utils import drop_tokenizer_special_tokens
 
 
@@ -180,38 +181,6 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
             return True
         return range_to_check[0] <= self.cur_epoch <= range_to_check[1]
 
-    def _construct_matrix_from_opt_edge_idxes(self,
-                                              opt_edge_idxes: torch.Tensor,
-                                              token_mask: torch.Tensor) -> torch.Tensor:
-        bsz, max_token_num = token_mask.shape
-        # opt_edge_idxes shape: [bsz, max_edge, 2]
-        # meta_idxes shape: [num_of_edges_in_batch, 2]
-
-        # First we want to filter padded edges in the input "opt_edge_idxes"
-        # For padded edges, they must be (0,0) and sum to 0, thus we can use "nonzero" to filter them
-        # (Side Effect: real (0,0) edge may also be filtered)
-        non_pad_opt_edge_meta_idxes = opt_edge_idxes.sum(2).nonzero()
-        # unshaped_items shape: [num_of_edges_in_batch, 2]
-        unshaped_non_pad_opt_edge_items = opt_edge_idxes[non_pad_opt_edge_meta_idxes[:,0], non_pad_opt_edge_meta_idxes[:,1]]
-        # item_inbatch_idxes shape: [num_of_edges_in_batch]
-        items_inbatch_idxes = non_pad_opt_edge_meta_idxes[:,0]
-        # matrix_edge_idxes shape: [num_of_edges_in_batch, 3]
-        matrix_edge_idxes = torch.cat((items_inbatch_idxes.unsqueeze(-1), unshaped_non_pad_opt_edge_items), dim=-1)
-        matrix_edge_idxes = matrix_edge_idxes.long()
-
-        # token_mask shape: [bsz, max_token, max_token]
-        matrix = torch.ones((bsz,max_token_num,max_token_num), device=token_mask.device)
-        # Set edges
-        matrix[matrix_edge_idxes[:,0],matrix_edge_idxes[:,1],matrix_edge_idxes[:,2]] = 2
-
-        # Set padded positions in matrix to zero
-        # This process is hard to parallelize, thus we sequentially do it
-        for i, matrix_i in enumerate(matrix):
-            non_pad_token_num = token_mask[i].sum()
-            matrix_i[non_pad_token_num:,non_pad_token_num:] = 0
-
-        return matrix
-
 
     def forward(self,
                 code: TextFieldTensors,
@@ -295,7 +264,7 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
         # Check pdg loss is in range.
         elif self.check_pdg_loss_in_range(self.pdg_data_loss_range):
             if self.token_edge_input_being_optimized:
-                token_data_edges = self._construct_matrix_from_opt_edge_idxes(token_data_edges, code_token_mask)
+                token_data_edges = construct_matrix_from_opt_edge_idxes(token_data_edges, code_token_mask)
             pdg_data_loss, pdg_data_loss_mask = self.data_loss_sampler.get_loss(token_data_edges, pred_data_edge_probs,
                                                                                 elem_mask=token_data_token_mask)
             pdg_data_loss *= self.pdg_data_loss_coeff
@@ -312,6 +281,7 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
 
         returned_dict['loss'] = final_loss
         return returned_dict
+
 
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
         metrics: Dict[str, float] = {}

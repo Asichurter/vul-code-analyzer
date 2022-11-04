@@ -119,6 +119,58 @@ def replace_int_value(tensor: torch.Tensor,
     replace_mask = tensor == replaced_value
     return torch.masked_fill(tensor, replace_mask, new_value)
 
+def construct_matrix_from_opt_edge_idxes(opt_edge_idxes: torch.Tensor, token_mask: torch.Tensor,
+                                         edge_value: int = 2, non_edge_value: int = 1, pad_value: int = 0) -> torch.Tensor:
+    """
+        Construct edge matrix from optimized edge indices list.
+
+        e.g.:
+
+        Optimized edge indices list, Shape: [2, 3, 2]
+        [[[0,1], [0,2], [2,2]],
+         [[0,0], [1,1], [0,0]]]
+
+        Output matrix, Shape: [2, 4, 4] (max_item=4, valid_token_count=[3,2])
+        [[[1,2,2,0],   [[2,1,0,0],
+          [1,1,1,0],    [1,2,0,0],
+          [1,1,2,0],    [0,0,0,0],
+          [0,0,0,0]],   [0,0,0,0]]]
+
+        Note: Since the number of valid elements of each item of the batch can be different,
+              we use "token_mask" to collect the real valid item count and set the padded rows and columns to 0s.
+
+    """
+    bsz, max_token_num = token_mask.shape
+    # opt_edge_idxes shape: [bsz, max_edge, 2]
+    # meta_idxes shape: [num_of_edges_in_batch, 2]
+
+    # First we want to filter padded edges in the input "opt_edge_idxes"
+    # For padded edges, they must be (0,0) and sum to 0, thus we can use "nonzero" to filter them
+    # (Side Effect: real (0,0) edge may also be filtered)
+    non_pad_opt_edge_meta_idxes = opt_edge_idxes.sum(2).nonzero()
+    # unshaped_items shape: [num_of_edges_in_batch, 2]
+    unshaped_non_pad_opt_edge_items = opt_edge_idxes[non_pad_opt_edge_meta_idxes[:,0], non_pad_opt_edge_meta_idxes[:,1]]
+    # item_inbatch_idxes shape: [num_of_edges_in_batch]
+    items_inbatch_idxes = non_pad_opt_edge_meta_idxes[:,0]
+
+    # Then, we concat the batch_index as the first dimension of the "start-end" edge pair,
+    # to make convenience of parallel processing the whole batch.
+    # matrix_edge_idxes shape: [num_of_edges_in_batch, 3]
+    matrix_edge_idxes = torch.cat((items_inbatch_idxes.unsqueeze(-1), unshaped_non_pad_opt_edge_items), dim=-1)
+    matrix_edge_idxes = matrix_edge_idxes.long()
+    # token_mask shape: [bsz, max_token, max_token]
+    matrix: torch.Tensor = torch.zeros((bsz,max_token_num,max_token_num), device=token_mask.device) + non_edge_value
+    # Set edges
+    matrix[matrix_edge_idxes[:,0],matrix_edge_idxes[:,1],matrix_edge_idxes[:,2]] = edge_value
+
+    # Set padded positions in matrix to zero
+    # This process is hard to parallelize, thus we sequentially do it
+    for i, matrix_i in enumerate(matrix):
+        non_pad_token_num = token_mask[i].sum()
+        matrix_i[non_pad_token_num:,non_pad_token_num:] = pad_value
+
+    return matrix
+
 
 if __name__ == "__main__":
     source_mask = torch.Tensor([[1,1,1,1,1,0], [1,1,1,1,0,0]])
