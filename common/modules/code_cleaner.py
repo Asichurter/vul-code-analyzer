@@ -21,6 +21,17 @@ class TrivialCodeCleaner(CodeCleaner):
         code = self.basic_code_process(code)
         return code
 
+@CodeCleaner.register('pre_line_truncate')
+class PreLineTruncateCodeCleaner(CodeCleaner):
+    class TrivialCodeCleaner(CodeCleaner):
+        def __init__(self, max_line: int):
+            self.max_line = max_line
+
+        def clean_code(self, code: str) -> str:
+            truncate_code = '\n'.join(code.split('\n')[:self.max_line])
+            truncate_code = self.basic_code_process(truncate_code)
+            return truncate_code
+
 
 @CodeCleaner.register('space_sub')
 class SpaceSubCodeCleaner(CodeCleaner):
