@@ -1,3 +1,4 @@
 from .comp.dataset_readers.reveal_dataset_reader import RevealBaseDatasetReader
+from .comp.dataset_readers.fan_vul_det_dataset_reader import FanVulDetectBaseDatasetReader
 
 from .model.vul_func_predictor import VulFuncPredictor
