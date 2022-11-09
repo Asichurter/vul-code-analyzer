@@ -8,7 +8,7 @@ from allennlp.data.fields import TextField, TensorField
 
 from common.modules.code_cleaner import CodeCleaner, PreLineTruncateCodeCleaner
 from utils.downstream_utils.tokenize_utils import downstream_tokenize
-from utils.file import load_json
+from utils.file import read_dumped
 
 
 @DatasetReader.register('fan_vul_detect_base')
@@ -44,6 +44,6 @@ class FanVulDetectBaseDatasetReader(DatasetReader):
 
 
     def _read(self, file_path) -> Iterable[Instance]:
-        data = load_json(file_path)
+        data = read_dumped(file_path)
         for item in tqdm(data):
             yield self.text_to_instance(item)
