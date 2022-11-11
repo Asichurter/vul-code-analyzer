@@ -17,14 +17,14 @@ from common import *
 args = read_train_from_config_args()
 
 converted_json_file_path = f'/data1/zhijietang/temp/config.json'
-serialization_dir = '/data1/zhijietang/vul_data/run_logs/reveal_vul_predict/{}'
+serialization_dir = '/data1/zhijietang/vul_data/run_logs/{}/{}'
 
 config_json = json.loads(_jsonnet.evaluate_file(args.config))
 
 extra = config_json.pop('extra')
 version = extra.get('version')
 assert version is not None
-serialization_dir = serialization_dir.format(version)
+serialization_dir = serialization_dir.format(args.run_log_dir, version)
 
 # add serial dir to callback parameters
 for callback in config_json['trainer']['callbacks']:
@@ -39,7 +39,7 @@ cuda_device = int(cuda_device)
 torch.cuda.set_device(cuda_device)
 
 mylogger.debug('train_from_config',
-               f'Ver. = {version}, cuda_device = {cuda_device}')
+               f'RunLogDir = {args.run_log_dir}, Ver. = {version}, cuda_device = {cuda_device}')
 
 # Instead of this python code, you would typically just call
 # allennlp train [config_file] -s [serialization_dir]
