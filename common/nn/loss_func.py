@@ -106,7 +106,7 @@ class BCELoss(LossFunc):
         return torch.nn.functional.binary_cross_entropy(pred, label.float(), **kwargs)  # float type tensor is expected for 'label'
 
 
-def binary_focal_loss(probs, labels, loss_tensor, gamma=2, class_weight=None):
+def binary_focal_loss(probs, labels, loss_tensor, gamma=2., class_weight=None):
     """
     Binary alpha-balanced focal loss.
     https://openaccess.thecvf.com/content_ICCV_2017/papers/Lin_Focal_Loss_for_ICCV_2017_paper.pdf.
@@ -118,8 +118,10 @@ def binary_focal_loss(probs, labels, loss_tensor, gamma=2, class_weight=None):
     :param class_weight: Balanced class weights, must be in shape (2,).
                          Note if None is given, both classes will have weight=1 but not 0.5
     """
-    modulating_factor = (probs - labels) ** gamma
-    non_balanced_focal_loss = torch.abs(modulating_factor * loss_tensor)
+    # [BugFix] 11.11:
+    # “torch.abs” should be called before the gamma works, to prevent nan of sqrt on nagatives
+    modulating_factor = torch.abs(probs - labels) ** gamma
+    non_balanced_focal_loss = modulating_factor * loss_tensor
     assert torch.all(non_balanced_focal_loss >= 0), 'Fatal error of focal loss, negative loss term found (maybe a bug)'
 
     if class_weight is not None:
@@ -131,9 +133,8 @@ def binary_focal_loss(probs, labels, loss_tensor, gamma=2, class_weight=None):
 
 @LossFunc.register('bce_focal')
 class BCEFocalLoss(LossFunc):
-    # TODO: BceFocalLoss function has not been validated...
     def __init__(self,
-                 gamma: int = 2,
+                 gamma: float = 2,
                  positive_loss_weight: Optional[float] = None):
         super().__init__()
         self.gamma = gamma
