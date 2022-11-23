@@ -43,6 +43,9 @@ except:
 
 from tqdm import tqdm, trange
 import multiprocessing
+
+import sys
+sys.path.append('/data1/zhijietang/projects/vul-code-analyzer')
 from downstream.model.task_models.codexglue.clone_detection import CloneDetectModel
 
 cpu_cont = multiprocessing.cpu_count()
@@ -486,6 +489,8 @@ def main():
                         help="Evaluate all checkpoints starting with the same prefix as model_name_or_path ending and ending with step number")
     parser.add_argument("--no_cuda", action='store_true',
                         help="Avoid using CUDA when available")
+    parser.add_argument("--cuda", type=int,
+                        help="Cuda device index")
     parser.add_argument('--overwrite_output_dir', action='store_true',
                         help="Overwrite the content of the output directory")
     parser.add_argument('--overwrite_cache', action='store_true',
@@ -516,8 +521,8 @@ def main():
 
     # Setup CUDA, GPU & distributed training
     if args.local_rank == -1 or args.no_cuda:
-        device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
-        args.n_gpu = torch.cuda.device_count()
+        device = torch.device(f"cuda:{args.cuda}" if torch.cuda.is_available() and not args.no_cuda else "cpu")
+        args.n_gpu = 1 # torch.cuda.device_count()
     else:  # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.cuda.set_device(args.local_rank)
         device = torch.device("cuda", args.local_rank)
