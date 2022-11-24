@@ -1,5 +1,8 @@
 from .comp.dataset_readers.reveal_dataset_reader import RevealBaseDatasetReader
 from .comp.dataset_readers.fan_vul_det_dataset_reader import FanVulDetectBaseDatasetReader
 from .comp.dataset_readers.devign_dataset_reader import DevignBaseDatasetReader
+from .comp.dataset_readers.treevul_cwe_class_reader import TreeVulClassBaseDatasetReader
+from .comp.metrics.multiclass_classification import MulticlassClassificationMetric
+from .comp.nn.seq2vec.cls_avg_seq2vec import ClsAvgSeq2Vec
 
 from .model.vul_func_predictor import VulFuncPredictor

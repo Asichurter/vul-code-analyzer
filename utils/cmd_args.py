@@ -77,6 +77,19 @@ def read_devign_eval_args():
     parser.add_argument('-batch_size', default=64, type=int)
     return parser.parse_args()
 
+def read_treevul_classification_eval_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-version', required=True, type=int)
+    parser.add_argument('-subfolder', required=True, type=str, help="folder of which format, such as `splits`")
+    parser.add_argument('-subset', required=True, type=str, help='which split to use')
+    parser.add_argument('-split', required=True, type=str)
+    parser.add_argument('-model_name', type=str, default='model.tar.gz')
+    parser.add_argument('-data_file_name', type=str, default='test.json')
+    parser.add_argument('-run_log_dir', default='treevul', type=str)
+    parser.add_argument('-cuda', type=int)
+    parser.add_argument('-batch_size', default=32, type=int)
+    return parser.parse_args()
+
 def read_aggre_eval_results_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-version', type=str)

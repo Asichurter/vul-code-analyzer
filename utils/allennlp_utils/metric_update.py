@@ -1,9 +1,9 @@
 from typing import Optional
 
 import torch
-from allennlp.training.metrics import Metric
+from allennlp.training.metrics import Metric, F1Measure
 
-use_predicted_idxes_metrics = ['BooleanAccuracy']
+use_predicted_idxes_metrics = ['BooleanAccuracy', 'MulticlassClassificationMetric']
 use_probabilities_metrics = {
     'Auc': {'squeeze': True, 'expand': False},
     'CategoricalAccuracy': {'squeeze': False, 'expand': False},
