@@ -71,7 +71,7 @@ def read_devign_eval_args():
     parser.add_argument('-subset', required=True, type=str, help='which split to use')
     parser.add_argument('-split', required=True, type=str)
     parser.add_argument('-model_name', type=str, default='model.tar.gz')
-    parser.add_argument('-data_file_name', type=str, default='test.pkl')
+    parser.add_argument('-data_file_name', type=str, default='test.json')
     parser.add_argument('-run_log_dir', default='devign', type=str)
     parser.add_argument('-cuda', type=int)
     parser.add_argument('-batch_size', default=64, type=int)
