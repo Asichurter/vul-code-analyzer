@@ -34,7 +34,8 @@ class LinearSoftmaxClassifier(Classifier):
                  activations: List[str],
                  dropouts: List[float],
                  ahead_feature_dropout: float = 0.,
-                 log_softmax: bool = False):   # actual layer_num = len(hidden_dims) + 1
+                 log_softmax: bool = False,
+                 return_logits: bool = True):   # actual layer_num = len(hidden_dims) + 1
         super().__init__(out_feature_dim)
 
         assert len(hidden_dims) == len(activations) == len(dropouts)
@@ -53,13 +54,18 @@ class LinearSoftmaxClassifier(Classifier):
         self._in_feature_dim = in_feature_dim
         self._ahead_feature_dropout = torch.nn.Dropout(ahead_feature_dropout)
         self.softmax = torch.nn.LogSoftmax(dim=-1) if log_softmax else torch.nn.Softmax(dim=-1)
+        self.return_logits = return_logits
 
     def forward(self, feature: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         feature = self._ahead_feature_dropout(feature)
         logits = self._layers(feature)
-        probs = self.softmax(logits)
-        pred_idxes = torch.max(probs, dim=-1).indices
-        return probs, pred_idxes
+        pred_idxes = torch.max(logits, dim=-1).indices
+
+        if self.return_logits:
+            return logits, pred_idxes
+        else:
+            probs = self.softmax(logits)
+            return probs, pred_idxes
 
     def get_exp_input_dim(self) -> int:
         return self._in_feature_dim
