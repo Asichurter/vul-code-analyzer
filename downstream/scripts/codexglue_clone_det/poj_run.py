@@ -46,7 +46,7 @@ import multiprocessing
 
 import sys
 sys.path.append('/data1/zhijietang/projects/vul-code-analyzer')
-from downstream.model.task_models.codexglue.clone_detection import CloneDetectModel
+from downstream.model.task_models.codexglue.clone_detection import CloneDetectModel, UnixcoderCloneDetectModel, ClspoolingCloneDetectModel
 
 cpu_cont = multiprocessing.cpu_count()
 from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
@@ -411,6 +411,11 @@ def test(args, model, tokenizer):
                 js['answers'].append(indexs[int(idx)])
             f.write(json.dumps(js) + '\n')
 
+_pooling_funcs = {
+    'pooler': CloneDetectModel,
+    'mean': UnixcoderCloneDetectModel,
+    'cls': ClspoolingCloneDetectModel,
+}
 
 def main():
     parser = argparse.ArgumentParser()
@@ -509,6 +514,8 @@ def main():
     parser.add_argument('--server_ip', type=str, default='', help="For distant debugging.")
     parser.add_argument('--server_port', type=str, default='', help="For distant debugging.")
 
+    parser.add_argument('--pooling_func', type=str, default='pooler', help="Pooling func to produce code features from token embeddings")
+
     args = parser.parse_args()
 
     # Setup distant debugging if needed
@@ -580,7 +587,9 @@ def main():
     else:
         model = model_class(config)
 
-    model = CloneDetectModel(model, config, tokenizer, args)
+    # TODO: Change the model type here.
+    pooling_model_class = _pooling_funcs[args.pooling_func]
+    model = pooling_model_class(model, config, tokenizer, args)
     if args.local_rank == 0:
         torch.distributed.barrier()  # End of barrier to make sure only the first process in distributed training download model & vocab
 
