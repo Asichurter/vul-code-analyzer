@@ -27,6 +27,7 @@ class VulFuncPredictor(Model):
         # pretrained_state_dict_path: Optional[str] = None,
         # load_prefix_remap: Dict[str, str] = {},
         metric: Optional[Metric] = None,
+        wrapping_dim_for_code: int = 0,
         **kwargs
     ):
         super().__init__(vocab, **kwargs)
@@ -37,17 +38,11 @@ class VulFuncPredictor(Model):
         self.classifier = classifier
         self.metric = metric
 
-        # # Load partial remapped parameters from pre-trained
-        # if pretrained_state_dict_path is not None:
-        #     # Note we map the loaded weights to cpu to align with other parameters in the model,
-        #     # and trainer will help us to move them to GPU device together before training.
-        #     state_dict = torch.load(pretrained_state_dict_path, map_location='cpu')
-        #     self.partial_load_state_dict(state_dict, load_prefix_remap)
+        self.wrapping_dim_for_code = wrapping_dim_for_code
 
 
     def embed_encode_code(self, code: TextFieldTensors):
-        # num_wrapping_dim = dim_num - 2
-        num_wrapping_dim = 0
+        num_wrapping_dim = self.wrapping_dim_for_code
 
         # shape: (batch_size, max_input_sequence_length)
         mask = get_text_field_mask(code, num_wrapping_dims=num_wrapping_dim)
