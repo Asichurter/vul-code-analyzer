@@ -88,6 +88,8 @@ def read_treevul_classification_eval_args():
     parser.add_argument('-run_log_dir', default='treevul', type=str)
     parser.add_argument('-cuda', type=int)
     parser.add_argument('-batch_size', default=32, type=int)
+
+    parser.add_argument('-average', type=str, default='macro')
     return parser.parse_args()
 
 def read_aggre_eval_results_args():

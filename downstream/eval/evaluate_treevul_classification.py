@@ -87,10 +87,10 @@ all_ref, all_pred, all_score = predict_on_dataloader(model, data_loader)
 # all_score = torch.Tensor(all_score).exp().softmax(-1)[:,1].tolist()
 result_dict = {
     'Accuracy': accuracy_score(all_ref, all_pred),
-    'Precision': precision_score(all_ref, all_pred),
-    'Recall': recall_score(all_ref, all_pred),
-    'F1-Score': f1_score(all_ref, all_pred),
-    'AUC': roc_auc_score(all_ref, all_score)
+    'Precision': precision_score(all_ref, all_pred, average=args.average),
+    'Recall': recall_score(all_ref, all_pred, average=args.average),
+    'F1-Score': f1_score(all_ref, all_pred, average=args.average),
+    # 'AUC': roc_auc_score(all_ref, all_score, average=args.average)
 }
 
 print('*'*80)
