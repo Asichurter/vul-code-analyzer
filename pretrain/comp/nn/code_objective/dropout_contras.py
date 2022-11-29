@@ -67,7 +67,7 @@ class DimDropoutContrastiveLearning(CodeObjective):
 
         Similarity is set as cosine-similarity in default, while similarity temperature is also enabled.
         """
-        mylogger.debug('dim_dropout_contras', f'token_embedding size: {token_embeddings.size()}')
+        # mylogger.debug('dim_dropout_contras', f'token_embedding size: {token_embeddings.size()}')
         if self.drop_tokenizer_special_tokens:
             token_embeddings, token_mask = drop_tokenizer_special_tokens(self.tokenizer_type, token_embeddings, token_mask)
 
