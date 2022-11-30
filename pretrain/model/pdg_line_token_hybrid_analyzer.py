@@ -42,7 +42,7 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
         pdg_ctrl_loss_range: List[int] = [-1,-1],
         pdg_data_loss_range: List[int] = [-1,-1],
         token_edge_input_being_optimized: bool = False,
-        add_pdg_loss_metric: bool = False,
+        add_pdg_loss_metric: bool = True,
         **kwargs
     ):
         super().__init__(vocab, **kwargs)
