@@ -12,7 +12,8 @@ from .comp.metric.unified_pretrain_metric import UnifiedMaskAccuracy
 from .comp.metric.separated_pretrain_metric import SeparatedMaskAccuracy, SeparatedMaskF1, SeparatedSingleMaskF1
 from .comp.nn.code_objective.mlm import MlmObjective
 from .comp.nn.code_objective.span_mlm import SpanMlmObjective
-from .comp.nn.code_objective.dropout_contras import DimDropoutContrastiveLearning
+from .comp.nn.code_objective.dim_dropout_contras import DimDropoutContrastiveLearning
+from .comp.nn.code_objective.mask_dropout_contras import MaskDropoutContrastiveLearning
 from .comp.nn.line_extractor import AvgLineExtractor
 
 from .model.pdg_line_analyzer import CodeLinePDGAnalyzer

@@ -9,6 +9,8 @@ from utils.allennlp_utils.tokenizer_vocab_sensitive_utils import drop_tokenizer_
 
 from utils import GlobalLogger as mylogger
 
+# TODO: Implement pair-wise binary classification version of constrative learning
+
 @CodeObjective.register("dim_dropout_contras")
 class DimDropoutContrastiveLearning(CodeObjective):
     """
@@ -67,6 +69,9 @@ class DimDropoutContrastiveLearning(CodeObjective):
 
         Similarity is set as cosine-similarity in default, while similarity temperature is also enabled.
         """
+        if not self.training:
+            return torch.zeros((1,), device=token_embeddings.device)
+
         # mylogger.debug('dim_dropout_contras', f'token_embedding size: {token_embeddings.size()}')
         if self.drop_tokenizer_special_tokens:
             token_embeddings, token_mask = drop_tokenizer_special_tokens(self.tokenizer_type, token_embeddings, token_mask)
