@@ -148,7 +148,7 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
             # Update loss.
             obj_loss = obj_output['loss'] # / len(self.from_token_code_objectives)
             loss += obj_loss
-            obj.update_metric(loss)
+            obj.update_metric(obj_loss)
 
             if obj.as_code_embedder:
                 embed_output = obj_output
@@ -171,7 +171,7 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
             # Update loss.
             obj_loss = obj_output['loss'] # / len(self.from_embedding_code_objectives)
             loss += obj_loss
-            obj.update_metric(loss)
+            obj.update_metric(obj_loss)
 
         return loss
 
