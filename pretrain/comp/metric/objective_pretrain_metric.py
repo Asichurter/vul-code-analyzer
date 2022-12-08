@@ -1,3 +1,4 @@
+import torch
 from allennlp.training.metrics import Metric
 
 
@@ -10,7 +11,10 @@ class ObjectiveLoss(Metric):
 
     def __call__(self, loss_val):
         self.total_count += 1
-        self.total_loss += loss_val.item()
+        if isinstance(loss_val, torch.Tensor):
+            self.total_loss += loss_val.item()
+        else:
+            self.total_loss += loss_val
 
     def reset(self) -> None:
         self.total_loss = 0.
