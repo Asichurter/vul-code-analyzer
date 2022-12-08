@@ -43,6 +43,7 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
         pdg_data_loss_range: List[int] = [-1,-1],
         token_edge_input_being_optimized: bool = False,
         add_pdg_loss_metric: bool = True,
+        weight_file_path: Optional[str] = None,
         **kwargs
     ):
         super().__init__(vocab, **kwargs)
@@ -63,6 +64,7 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
         self.from_embedding_code_objectives = torch.nn.ModuleList()
         self.any_as_code_embedder = False
         self.preprocess_pretrain_objectives(code_objectives, vocab)
+
         self.pdg_ctrl_loss_coeff = pdg_ctrl_loss_coeff
         self.pdg_data_loss_coeff = pdg_data_loss_coeff
         self.pdg_ctrl_loss_range = pdg_ctrl_loss_range
@@ -76,6 +78,11 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
 
         self.cur_epoch = 0
         self.test = 0
+
+        # Maybe pre-load weights
+        if weight_file_path is not None:
+            state_dict = torch.load(weight_file_path)
+            self.load_state_dict(state_dict, strict=False)
 
     def preprocess_pretrain_objectives(self, objectives: List[Lazy[CodeObjective]], vocab: Vocabulary):
         as_code_embedder_count = 0
