@@ -21,6 +21,7 @@ class FanVulDetectBaseDatasetReader(DatasetReader):
                  code_cleaner: CodeCleaner = PreLineTruncateCodeCleaner(200),  # Pre-truncate lines to prevent long time waited
                  tokenizer_type: str = 'codebert',
                  model_mode: Optional[str] = None,
+                 debug: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
@@ -29,6 +30,7 @@ class FanVulDetectBaseDatasetReader(DatasetReader):
         self.code_cleaner = code_cleaner
         self.tokenizer_type = tokenizer_type
         self.model_mode = model_mode
+        self.debug = debug
 
     def text_to_instance(self, data_item: Dict) -> Instance:
         code = data_item['code']
@@ -45,5 +47,7 @@ class FanVulDetectBaseDatasetReader(DatasetReader):
 
     def _read(self, file_path) -> Iterable[Instance]:
         data = read_dumped(file_path)
+        if self.debug:
+            data = data[:150]
         for item in tqdm(data):
             yield self.text_to_instance(item)
