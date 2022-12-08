@@ -199,22 +199,25 @@ class MlmObjective(CodeObjective):
                            epoch: int,
                            mlm_sampling_weights: Optional[torch.Tensor] = None,
                            **kwargs) -> Dict:
-        code, sampled_mask, original_sampled_token_ids = self.random_mask(code,
-                                                                          mlm_sampling_weights=mlm_sampling_weights,
-                                                                          **kwargs)
-        code_embed_outputs = code_embed_func(code)
-        code_embeddings = code_embed_outputs['outputs']
+        if self.check_obj_in_range(epoch):
+            code, sampled_mask, original_sampled_token_ids = self.random_mask(code,
+                                                                              mlm_sampling_weights=mlm_sampling_weights,
+                                                                              **kwargs)
+            code_embed_outputs = code_embed_func(code)
+            code_embeddings = code_embed_outputs['outputs']
 
-        # Forward MLM inner layers.
-        sampled_idxes = sampled_mask.nonzero()
-        sampled_code_embeddings = code_embeddings[sampled_idxes[:, 0], sampled_idxes[:, 1], :]
-        sampled_code_embeddings = F.dropout(sampled_code_embeddings, self.dropout)
-        sampled_code_embeddings = self.activation(self.dense(sampled_code_embeddings))
-        sampled_code_embeddings = F.dropout(sampled_code_embeddings, self.dropout)
-        sampled_code_outputs = self.output_weight(sampled_code_embeddings)
+            # Forward MLM inner layers.
+            sampled_idxes = sampled_mask.nonzero()
+            sampled_code_embeddings = code_embeddings[sampled_idxes[:, 0], sampled_idxes[:, 1], :]
+            sampled_code_embeddings = F.dropout(sampled_code_embeddings, self.dropout)
+            sampled_code_embeddings = self.activation(self.dense(sampled_code_embeddings))
+            sampled_code_embeddings = F.dropout(sampled_code_embeddings, self.dropout)
+            sampled_code_outputs = self.output_weight(sampled_code_embeddings)
 
-        mlm_loss = self.mlm_loss(sampled_code_outputs, original_sampled_token_ids, epoch)
-        output_dict =  {'loss': mlm_loss}
-        output_dict.update(code_embed_outputs)
-        return output_dict
+            mlm_loss = self.mlm_loss(sampled_code_outputs, original_sampled_token_ids, epoch)
+            output_dict =  {'loss': mlm_loss}
+            output_dict.update(code_embed_outputs)
+            return output_dict
+        else:
+            return self.get_obj_not_in_range_result()
 

@@ -108,12 +108,16 @@ class DimDropoutContrastiveLearning(CodeObjective):
     def forward(self, **kwargs) -> Dict:
         return self.forward_from_embedding(**kwargs)
 
+
     def forward_from_embedding(self,
                                token_embedding: torch.Tensor,
                                token_mask: torch.Tensor,
                                epoch: int,
                                **kwargs) -> Dict:
-        dropout_constras_loss = self.dropout_constras_loss(epoch, token_embedding, token_mask, **kwargs)
-        output_dict =  {'loss': dropout_constras_loss}
-        return output_dict
+        if self.check_obj_in_range():
+            dropout_constras_loss = self.dropout_constras_loss(epoch, token_embedding, token_mask, **kwargs)
+            output_dict =  {'loss': dropout_constras_loss}
+            return output_dict
+        else:
+            return self.get_obj_not_in_range_result()
 

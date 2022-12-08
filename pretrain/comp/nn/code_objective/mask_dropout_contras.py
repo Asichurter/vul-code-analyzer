@@ -71,6 +71,7 @@ class MaskDropoutContrastiveLearning(CodeObjective):
 
         # mylogger.debug('dim_dropout_contras', f'token_embedding size: {token_embeddings.size()}')
         if self.drop_tokenizer_special_tokens:
+            # TODO: Check if here gives a in-place operation ?
             token_embeddings, token_mask = drop_tokenizer_special_tokens(self.tokenizer_type, token_embeddings, token_mask)
             token_embeddings_extra, token_mask_extra = drop_tokenizer_special_tokens(self.tokenizer_type, token_embeddings_extra, token_mask_extra)
 
@@ -97,7 +98,7 @@ class MaskDropoutContrastiveLearning(CodeObjective):
         # Compute loss from positive pair.
         loss = torch.log(probs[:,0] + self.log_epsilon)
         loss = -1 * loss.mean() * self.loss_coeff
-        loss = self.rectify_loss_based_on_range(loss, epoch)
+        # loss = self.rectify_loss_based_on_range(loss, epoch)
         return loss
 
 
@@ -110,15 +111,18 @@ class MaskDropoutContrastiveLearning(CodeObjective):
                            code_embed_func: Callable,
                            epoch: int,
                            **kwargs) -> Dict:
-        # Forward the same code embedder twice.
-        code_embed_outputs = code_embed_func(code)
-        code_embeddings, code_mask = code_embed_outputs['outputs'], code_embed_outputs['mask']
-        code_embed_outputs_extra = code_embed_func(code)
-        code_embeddings_extra, code_mask_extra = code_embed_outputs_extra['outputs'], code_embed_outputs_extra['mask']
+        if self.check_obj_in_range(epoch):
+            # Forward the same code embedder twice.
+            code_embed_outputs = code_embed_func(code)
+            code_embeddings, code_mask = code_embed_outputs['outputs'], code_embed_outputs['mask']
+            code_embed_outputs_extra = code_embed_func(code)
+            code_embeddings_extra, code_mask_extra = code_embed_outputs_extra['outputs'], code_embed_outputs_extra['mask']
 
-        # Compute contrastive loss from two forward representations.
-        dropout_constras_loss = self.mask_dropout_constras_loss(epoch, code_embeddings, code_embeddings_extra, code_mask, code_mask_extra, **kwargs)
-        output_dict =  {'loss': dropout_constras_loss}
-        output_dict.update(code_embed_outputs)
-        return output_dict
+            # Compute contrastive loss from two forward representations.
+            dropout_constras_loss = self.mask_dropout_constras_loss(epoch, code_embeddings, code_embeddings_extra, code_mask, code_mask_extra, **kwargs)
+            output_dict =  {'loss': dropout_constras_loss}
+            output_dict.update(code_embed_outputs)
+            return output_dict
+        else:
+            return self.get_obj_not_in_range_result()
 
