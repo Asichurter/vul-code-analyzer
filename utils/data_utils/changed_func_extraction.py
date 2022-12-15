@@ -64,16 +64,21 @@ def compare_align_funcs_based_on_signatures(a_func_nodes: List[ASTNode], b_func_
                 matched_func_def_node_pairs.append((a_func_nodes[a_index], b_func_nodes[b_index], sig_distance / len(a_sig), a_sig, b_sig))
                 break
 
+        # No exactly match, try to find the closest one among b
         if not matched:
-            min_distance = min(distances)
-            min_distance_index = distances.index(min_distance)
-            min_distance_sig = dist_sigs[min_distance_index]
-            matched_func_def_node_pairs.append((a_func_nodes[min_distance_index], b_func_nodes[min_distance_index], min_distance / len(a_sig), a_sig, min_distance_sig))
+            if len(distances) > 0:
+                min_distance = min(distances)
+                min_distance_index = distances.index(min_distance)
+                min_distance_sig = dist_sigs[min_distance_index]
+                matched_func_def_node_pairs.append((a_func_nodes[a_index], b_func_nodes[min_distance_index], min_distance / len(a_sig), a_sig, min_distance_sig))
+            # If no funcs remained after change (deletion), use None to replace the after-change func node
+            else:
+                matched_func_def_node_pairs.append((a_func_nodes[a_index], None, None, a_sig, None))
 
     return matched_func_def_node_pairs
 
 
-def extract_changed_cpp_funcs_from_diff(diff: str, compare_direc: bool = True):
+def extract_changed_cpp_funcs_from_diff(diff: str, compare_direc: bool = True) -> Tuple[List, bool]:
     """
     This method extract changed function pairs from diff, by following steps:
 
@@ -99,51 +104,60 @@ def extract_changed_cpp_funcs_from_diff(diff: str, compare_direc: bool = True):
         If after-change side function is preferred, set "compare_direc"=False.
     """
     patch_set = unidiff.PatchSet(diff)
-    if len(patch_set) > 1:
+    if len(patch_set) == 0:
         print(f"Warning: Get {len(patch_set)} changed files in the diff, do not extract [extract_changed_before_cpp_funcs_from_diff]")
         return [], False
 
-    # Only one file is processed
-    file = patch_set[0]
-    # Separate add/remove lines from diff
-    before_code, after_code = '', ''
-    for hunk in file:
-        for line in hunk:
-            if line.is_context:
-                before_code += line.value
-                after_code += line.value
-            elif compare_direc:
-                if line.is_added:
-                    after_code += line.value[1:]  # Remove the "-" or "+" character at line head
-                if line.is_removed:
-                    before_code += line.value[1:]
+    commit_changed_funcs = []
+    for file in patch_set:
+        # Only one file is processed
+        # file = patch_set[0]
+        # Separate add/remove lines from diff
+        before_code, after_code = '', ''
+        for hunk in file:
+            for line in hunk:
+                if line.is_context:
+                    before_code += line.value
+                    after_code += line.value
+                elif compare_direc:
+                    if line.is_added:
+                        after_code += line.value[1:]  # Remove the "-" or "+" character at line head
+                    if line.is_removed:
+                        before_code += line.value[1:]
+                else:
+                    if line.is_removed:
+                        after_code += line.value[1:]  # Remove the "-" or "+" character at line head
+                    if line.is_added:
+                        before_code += line.value[1:]
+
+        # Extract funcs file-by-file
+        before_tree = parser.parse(encode_bytes(before_code))
+        after_tree = parser.parse(encode_bytes(after_code))
+        before_func_nodes = retrieve_func_defination_nodes(before_tree.root_node, [])
+        after_func_nodes = retrieve_func_defination_nodes(after_tree.root_node, [])
+
+        aligned_func_nodes = compare_align_funcs_based_on_signatures(before_func_nodes, after_func_nodes)
+        changed_funcs = []
+        for before_node, after_node, dist_ratio, a_sig, b_sig in aligned_func_nodes:
+            if after_node is None:
+                changed_funcs.append((decode_bytes(before_node.text), '', a_sig, ''))
+            # Signature matched & Func changed
+            elif dist_ratio == 0:
+                if before_node.text != after_node.text:
+                    changed_funcs.append((decode_bytes(before_node.text), decode_bytes(after_node.text), a_sig, b_sig))
+            # Two cases:
+            # 1. Func deleted, no matched b func
+            # 2. Func signature changed
+            # (Both two cases belong to "before-fun changed")
             else:
-                if line.is_removed:
-                    after_code += line.value[1:]  # Remove the "-" or "+" character at line head
-                if line.is_added:
-                    before_code += line.value[1:]
-
-    # Extract funcs file-by-file
-    before_tree = parser.parse(encode_bytes(before_code))
-    after_tree = parser.parse(encode_bytes(after_code))
-    before_func_nodes = retrieve_func_defination_nodes(before_tree.root_node, [])
-    after_func_nodes = retrieve_func_defination_nodes(after_tree.root_node, [])
-
-    aligned_func_nodes = compare_align_funcs_based_on_signatures(before_func_nodes, after_func_nodes)
-    changed_funcs = []
-    for before_node, after_node, dist_ratio, a_sig, b_sig in aligned_func_nodes:
-        # Signature matched & Func changed
-        if dist_ratio == 0:
-            if before_node.text != after_node.text:
                 changed_funcs.append((decode_bytes(before_node.text), decode_bytes(after_node.text), a_sig, b_sig))
-        # Two cases:
-        # 1. Func deleted, no matched b func
-        # 2. Func signature changed
-        # (Both two cases belong to "before-fun changed")
-        else:
-            changed_funcs.append((decode_bytes(before_node.text), decode_bytes(after_node.text), a_sig, b_sig))
 
-    return changed_funcs, True
+        commit_changed_funcs.append({
+            'file': file.path,
+            'changed_funcs': changed_funcs
+        })
+
+    return commit_changed_funcs, True
 
 
 if __name__ == '__main__':

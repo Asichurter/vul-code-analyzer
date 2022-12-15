@@ -73,17 +73,20 @@ for i, (commit_id, commits) in enumerate(treevul_commits.items()):
     try:
         project_path = '/'.join(local_repos_meta_infos[repo_name]['local_clone_dir'].split('/')[:-1])
         # subprocess.run(f'git config --global --add safe.directory {project_path}', shell=True, check=True)
-        repo = git.Repo(project_path)
-        diff_output = repo.git.diff(f'{commit_id}^!', unified=50000)
+        # repo = git.Repo(project_path)
+        # diff_output = repo.git.diff(f'{commit_id}^!', unified=50000)
         # write_text(diff_output, f"{diff_output_path}/{repo_name_as_path}---{commit_id}.diff")
-        filter_files_in_diff_and_dump(diff_output, f"{diff_output_path}/{repo_name_as_path}---{commit_id}.diff")
+        # filter_files_in_diff_and_dump(diff_output, f"{diff_output_path}/{repo_name_as_path}---{commit_id}.diff")
         succeed += 1
     except Exception as e:
         print(f"Error: {e}")
         failed_commits.append(f"{repo_name}---{commit_id}")
         failed += 1
     finally:
-        cwe_path_lists[f'{repo_name_as_path}---{commit_id}.diff'] = commits[0]['path_list']
+        cwe_path_lists[f'{repo_name_as_path}---{commit_id}.diff'] = {
+            'cwe_path': commits[0]['path_list'],
+            'cve_list': commits[0]['cve_list']
+        }
 
 print('\n\n')
 print('*'*50)
@@ -95,8 +98,8 @@ print('*'*50)
 print('Filtered Ext Names:')
 print(filtered_file_ext_names)
 
-dump_json(failed_commits, failed_commit_list_dump_path)
-dump_json(list(filtered_file_ext_names), dump_base_path+"/filtered_ext_names.json")
+# dump_json(failed_commits, failed_commit_list_dump_path)
+# dump_json(list(filtered_file_ext_names), dump_base_path+"/filtered_ext_names.json")
 dump_json(cwe_path_lists, cwe_path_list_dump_path)
 
 
