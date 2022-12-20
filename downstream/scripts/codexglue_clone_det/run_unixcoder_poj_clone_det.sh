@@ -1,0 +1,33 @@
+python poj_unixcoder_run.py \
+    --output_dir /data1/zhijietang/vul_data/run_logs/poj_clone_det/6 \
+    --model_name_or_path /data1/zhijietang/vul_data/transformers_repos/codebert-hybridPDG-mlm-best \
+    --do_train \
+    --train_data_file /data1/zhijietang/vul_data/datasets/POJ/clone-det/splits/codexglue_splits/train.jsonl \
+    --eval_data_file /data1/zhijietang/vul_data/datasets/POJ/clone-det/splits/codexglue_splits/valid.jsonl \
+    --test_data_file /data1/zhijietang/vul_data/datasets/POJ/clone-det/splits/codexglue_splitss/test.jsonl \
+    --num_train_epochs 2 \
+    --block_size 400 \
+    --train_batch_size 8 \
+    --eval_batch_size 16 \
+    --learning_rate 2e-5 \
+    --max_grad_norm 1.0 \
+    --seed 123456 \
+    --cuda 3 \
+    --model_family codebert
+
+python poj_unixcoder_run.py  \
+    --output_dir /data1/zhijietang/vul_data/run_logs/poj_clone_det/5 \
+    --model_name_or_path microsoft/unixcoder-base \
+    --do_eval \
+    --do_test \
+    --eval_data_file /data1/zhijietang/vul_data/datasets/POJ/clone-det/splits/codexglue_splits/valid.jsonl \
+    --test_data_file /data1/zhijietang/vul_data/datasets/POJ/clone-det/splits/codexglue_splits/test.jsonl \
+    --num_train_epochs 2 \
+    --block_size 400 \
+    --train_batch_size 8 \
+    --eval_batch_size 16 \
+    --learning_rate 2e-5 \
+    --max_grad_norm 1.0 \
+    --seed 123456 \
+    --cuda 4 \
+    --model_family unixcoder

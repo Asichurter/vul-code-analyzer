@@ -2,6 +2,7 @@ import numpy
 import Levenshtein
 import subprocess
 import os
+import random
 from unidiff import PatchSet
 
 from utils.file import load_json, dump_text, read_dumped, load_text
@@ -18,6 +19,8 @@ git_diff_dump_cmd_temp = 'git diff --no-index -w --unified=50000 --output={} {} 
 
 original_data = read_dumped(fan_original_data_path)
 linevul_data = read_dumped(linevul_data_path)
+random.shuffle(original_data)
+random.shuffle(linevul_data)
 
 def extract_sig(code):
     return code.split('\n')[0]
