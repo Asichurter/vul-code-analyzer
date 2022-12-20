@@ -26,6 +26,7 @@ class TreeVulClassBaseDatasetReader(DatasetReader):
                  file_separator: str = '',
                  keep_hunk_hierarchy: bool = False,
                  keep_file_hierarchy: bool = True,      # Disabled now, default to True
+                 debug: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
@@ -42,6 +43,7 @@ class TreeVulClassBaseDatasetReader(DatasetReader):
         self.keep_hunk_hierarchy = keep_hunk_hierarchy
         self.keep_file_hierarchy = keep_file_hierarchy
 
+        self.debug = debug
         self.total_read_instances = 0
 
     def _process_commit_files_as_field(self, files: List[Dict]) -> Optional[Field]:
@@ -90,6 +92,7 @@ class TreeVulClassBaseDatasetReader(DatasetReader):
             cwe_label_field = TensorField(torch.LongTensor([self.cwe_label_map[cwe_label]]))
 
         removed_code_field = self._process_commit_files_as_field(data_item['files'])
+        # Skip insances where removed code is empty
         if removed_code_field is None:
             return False, None
 
@@ -103,6 +106,8 @@ class TreeVulClassBaseDatasetReader(DatasetReader):
     def _read(self, file_path) -> Iterable[Instance]:
         start_count = self.total_read_instances
         data = read_dumped(file_path)
+        data = data[:150] if self.debug else data
+        mylogger.info('reader', f'Total {len(data)} items in data before read')
         for item in tqdm(data):
             ok, instance =  self.text_to_instance(item)
             if ok:
