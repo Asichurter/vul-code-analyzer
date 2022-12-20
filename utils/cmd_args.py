@@ -23,6 +23,7 @@ def read_train_from_config_args():
     parser.add_argument('-config', type=str, default='', help='config path of training')
     parser.add_argument('-run_log_dir', type=str, default='reveal_new', help='config path of training')
     parser.add_argument('--disable_friendly_logging', action='store_true', help='whether to disable file_friendly_logging of allennlp.train')
+    parser.add_argument('--add_rs', action='store_true', default=False, help='whether to add the rs_0 the tail of the serilization path')
     return parser.parse_args()
 
 def read_reveal_cv_train_from_config_args():
@@ -88,6 +89,23 @@ def read_treevul_classification_eval_args():
     parser.add_argument('-run_log_dir', default='treevul', type=str)
     parser.add_argument('-cuda', type=int)
     parser.add_argument('-batch_size', default=32, type=int)
+
+    parser.add_argument('-average', type=str, default='macro')
+    return parser.parse_args()
+
+def read_classification_eval_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-version', required=True, type=int)
+    parser.add_argument('-dataset', required=True, type=str)
+    parser.add_argument('-subfolder', required=True, type=str, help="folder of which format, such as `splits`")
+    parser.add_argument('-subset', required=True, type=str, help='which split to use')
+    parser.add_argument('-split', default=None, type=str)
+    parser.add_argument('-model_name', type=str, default='model.tar.gz')
+    parser.add_argument('-data_file_name', type=str, default='test.json')
+    parser.add_argument('-run_log_dir', default='treevul', type=str)
+    parser.add_argument('-cuda', type=int)
+    parser.add_argument('-batch_size', default=32, type=int)
+    parser.add_argument('--dump_scores', action='store_true', default=False)
 
     parser.add_argument('-average', type=str, default='macro')
     return parser.parse_args()
