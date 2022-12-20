@@ -17,7 +17,9 @@ from common import *
 args = read_train_from_config_args()
 
 converted_json_file_path = f'/data1/zhijietang/temp/config.json'
-serialization_dir = '/data1/zhijietang/vul_data/run_logs/{}/{}/rs_0'
+serialization_dir = '/data1/zhijietang/vul_data/run_logs/{}/{}/'
+if args.add_rs:
+    serialization_dir += 'rs_0'
 
 config_json = json.loads(_jsonnet.evaluate_file(args.config))
 

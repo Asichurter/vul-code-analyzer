@@ -15,6 +15,7 @@ from utils.allennlp_utils.metric_update import update_metric
 
 
 @Model.register('vul_func_predictor')
+@Model.register('downstream_classifier')
 class VulFuncPredictor(Model):
     def __init__(
         self,
