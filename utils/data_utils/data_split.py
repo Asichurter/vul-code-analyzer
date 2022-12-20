@@ -1,6 +1,9 @@
 import random
 import time
 from typing import Iterable, Dict, List
+import os
+
+from utils.file import dump_json, dump_pickle
 
 
 def split_cross_validation_data(data_items, cv):
@@ -68,3 +71,16 @@ def class_sensitive_random_split_by_list(data_list: Iterable[List], train_ratio,
         random.shuffle(tests)
 
     return trains, validates, tests
+
+def dump_split_helper(dump_base_path, dump_format='json', *split_outputs):
+    train, val, test = split_outputs
+    if dump_format == 'json':
+        dump_json(train, os.path.join(dump_base_path, 'train.json'))
+        dump_json(val, os.path.join(dump_base_path, 'validate.json'))
+        dump_json(test, os.path.join(dump_base_path, 'test.json'))
+    elif dump_format == 'pkl':
+        dump_pickle(train, os.path.join(dump_base_path, 'train.pkl'))
+        dump_pickle(val, os.path.join(dump_base_path, 'validate.pkl'))
+        dump_pickle(test, os.path.join(dump_base_path, 'test.pkl'))
+    else:
+        raise ValueError(f'dump_format={dump_format}')
