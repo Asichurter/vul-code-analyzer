@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 
 import numpy
 import torch
@@ -47,3 +47,39 @@ class MulticlassClassificationMetric(Metric):
             'recall': recall,
             'f1': f1
         }
+
+@Metric.register('multi_task_multi_class')
+class MultitaskMulticlassClassificationMetric(Metric):
+    def __init__(self,
+                 task_num: int,
+                 task_names: List[str],
+                 average: str = 'macro',
+                 zero_division: Union[str, int] = 0,
+                 f1_only: bool = True):
+        self.task_num = task_num
+        self.task_metrics = [MulticlassClassificationMetric(average, zero_division) for i in range(task_num)]
+        self.task_names = task_names
+        self.f1_only = f1_only
+
+    def __call__(self, predictions, gold_labels, mask):
+        if mask is None:
+            for i in range(self.task_num):
+                self.task_metrics[i](predictions[:,i], gold_labels[:,i], mask)
+        else:
+            for i in range(self.task_num):
+                self.task_metrics[i](predictions[:,i], gold_labels[:,i], mask[:,i])
+
+    def reset(self):
+        for metric in self.task_metrics:
+            metric.reset()
+
+    def get_metric(self, reset: bool):
+        multi_task_metrics = {}
+        for name, metric in zip(self.task_names, self.task_metrics):
+            task_metrics = metric.get_metric(reset)
+            if self.f1_only:
+                renamed_metrics = {f'{name}_f1': task_metrics['f1']}
+            else:
+                renamed_metrics = {f'{name}_{k}': v for k,v in task_metrics.items()}
+            multi_task_metrics.update(renamed_metrics)
+        return multi_task_metrics
