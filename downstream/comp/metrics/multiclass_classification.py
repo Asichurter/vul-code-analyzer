@@ -61,13 +61,13 @@ class MultitaskMulticlassClassificationMetric(Metric):
         self.task_names = task_names
         self.f1_only = f1_only
 
-    def __call__(self, predictions, gold_labels, mask):
+    def __call__(self, predictions: List[torch.Tensor], gold_labels: List[torch.Tensor], mask):
         if mask is None:
             for i in range(self.task_num):
-                self.task_metrics[i](predictions[:,i], gold_labels[:,i], mask)
+                self.task_metrics[i](predictions[i], gold_labels[i], mask)
         else:
             for i in range(self.task_num):
-                self.task_metrics[i](predictions[:,i], gold_labels[:,i], mask[:,i])
+                self.task_metrics[i](predictions[i], gold_labels[i], mask[i])
 
     def reset(self):
         for metric in self.task_metrics:

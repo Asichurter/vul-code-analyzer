@@ -35,7 +35,7 @@ class CvssMetricPredBaseDatasetReader(DatasetReader):
         self.model_mode = model_mode
         self.debug = debug
 
-    def text_to_instance(self, data_item: Dict) -> Tuple[bool,Optional[Instance]]:
+    def text_to_instance(self, data_item: Dict) -> Instance:
         code = data_item['code']
         code = self.code_cleaner.clean_code(code)
         tokenized_code = downstream_tokenize(self.code_tokenizer, code, self.tokenizer_type, self.model_mode)
@@ -51,7 +51,7 @@ class CvssMetricPredBaseDatasetReader(DatasetReader):
         label_field = ListField(metric_labels)
         fields['label'] = label_field
 
-        return True, Instance(fields)
+        return Instance(fields)
 
 
     def _read(self, file_path) -> Iterable[Instance]:

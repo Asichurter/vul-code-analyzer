@@ -35,7 +35,7 @@ class MultiTaskClassifier(Model):
         self.code_encoder = code_encoder
         self.code_feature_squeezer = code_feature_squeezer
         self.loss_func = loss_func
-        self.classifiers = classifiers
+        self.classifiers = torch.nn.ModuleList(classifiers)
         self.metric = metric
 
         self.wrapping_dim_for_code = wrapping_dim_for_code
@@ -55,13 +55,24 @@ class MultiTaskClassifier(Model):
             "outputs": code_feature
         }
 
-    def _forward_multi_classifiers(self, features: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _forward_multi_classifiers(self, features: torch.Tensor) -> Tuple[List[torch.Tensor], List[torch.Tensor]]:
         multi_task_logits, multi_task_labels = [], []
         for classifier in self.classifiers:
-            pred_logits, pred_labels = self.classifier(features)
+            pred_logits, pred_labels = classifier(features)
             multi_task_logits.append(pred_logits)
             multi_task_labels.append(pred_labels)
-        return torch.stack(multi_task_logits, dim=1), torch.stack(multi_task_labels, dim=1)
+        # First dim is task dim.
+        # Since output_num for each task can differ, we can not stack them.
+        # But the predicted indices is consistent, we can stack them as output.
+        return multi_task_logits, multi_task_labels
+
+    def _get_multi_task_loss(self, logits_list: List[torch.Tensor], labels_list: List[torch.Tensor]):
+        total_loss = torch.zeros((1,), device=logits_list[0].device)
+        for logits, labels in zip(logits_list, labels_list):
+            # labels = labels.squeeze(-1)
+            loss = self.loss_func(logits, labels)
+            total_loss += loss
+        return total_loss
 
     def forward(self,
                 code: TextFieldTensors,
@@ -72,11 +83,13 @@ class MultiTaskClassifier(Model):
         code_features = encoded_code_outputs['outputs']
 
         multi_task_logits, multi_task_labels = self._forward_multi_classifiers(code_features)
-        multi_task_labels = multi_task_labels.squeeze(-1)
-        loss = self.loss_func(multi_task_logits.flatten(0,1), label.flatten(0,1))
+        # multi_task_labels = multi_task_labels.squeeze(-1)
+        # loss = self.loss_func(multi_task_logits.flatten(0,1), label.flatten(0,1))
+        label = label.permute((1, 0))
+        loss = self._get_multi_task_loss(multi_task_logits, label)
 
         if self.metric is not None:
-            update_metric(self.metric, multi_task_labels, multi_task_logits, label)
+            update_metric(self.metric, multi_task_labels, multi_task_logits, label, flatten_labels=False)
 
         return {
             'logits': multi_task_logits,

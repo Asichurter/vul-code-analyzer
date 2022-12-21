@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union, List
 
 import torch
 from allennlp.training.metrics import Metric, F1Measure
@@ -12,14 +12,16 @@ use_probabilities_metrics = {
 
 
 def update_metric(metric: Metric,
-                  pred_idxes: torch.Tensor,
-                  probs: torch.Tensor,
+                  pred_idxes: Union[torch.Tensor, List[torch.Tensor]],
+                  probs: Union[torch.Tensor, List[torch.Tensor]],
                   labels: torch.Tensor,
-                  mask: Optional[torch.BoolTensor] = None):
+                  mask: Optional[torch.BoolTensor] = None,
+                  flatten_labels: bool = True):
     if metric is None:
         return
     metric_class_name = metric.__class__.__name__
-    labels = labels.view(labels.size(0),)
+    if flatten_labels:
+        labels = labels.flatten()
     if metric_class_name in use_predicted_idxes_metrics:
         metric(pred_idxes, labels, mask=mask)
     elif metric_class_name in use_probabilities_metrics:
