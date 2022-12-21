@@ -9,8 +9,8 @@ from allennlp.modules import TextFieldEmbedder, Seq2SeqEncoder
 from allennlp.nn.util import get_text_field_mask
 from allennlp.training.metrics import Metric
 
+from common.comp.nn.line_extractor import LineExtractor
 from pretrain.comp.metric.objective_pretrain_metric import ObjectiveLoss
-from pretrain.comp.nn.line_extractor import LineExtractor
 from pretrain.comp.nn.loss_sampler.loss_sampler import LossSampler
 from pretrain.comp.nn.node_encoder.node_encoder import NodeEncoder
 from pretrain.comp.nn.code_objective.code_objective import CodeObjective

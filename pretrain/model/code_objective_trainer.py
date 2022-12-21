@@ -8,8 +8,8 @@ from allennlp.models import Model
 from allennlp.modules import TextFieldEmbedder, Seq2SeqEncoder
 from allennlp.nn.util import get_text_field_mask
 
+from common.comp.nn.line_extractor import LineExtractor, AvgLineExtractor
 from pretrain.comp.nn.code_objective.code_objective import CodeObjective
-from pretrain.comp.nn.line_extractor import LineExtractor, AvgLineExtractor
 from utils.allennlp_utils.tokenizer_vocab_sensitive_utils import drop_tokenizer_special_tokens
 
 
