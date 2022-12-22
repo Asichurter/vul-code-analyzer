@@ -1,11 +1,13 @@
 from .comp.dataset_readers.reveal_dataset_reader import RevealBaseDatasetReader
-from .comp.dataset_readers.fan_vul_det_dataset_reader import FanVulDetectBaseDatasetReader
+from .comp.dataset_readers.func_vul_det_dataset_reader import FuncVulDetectBaseDatasetReader
 from .comp.dataset_readers.devign_dataset_reader import DevignBaseDatasetReader
 from .comp.dataset_readers.treevul_cwe_class_reader import TreeVulClassBaseDatasetReader
 from .comp.dataset_readers.cwe_pred_dataset_reader import CwePredBaseDatasetReader
 from .comp.dataset_readers.cvss_metric_dataset_reader import CvssMetricPredBaseDatasetReader
+from .comp.dataset_readers.line_vul_dataset_reader import LineVulDetectBaseDatasetReader
 from .comp.metrics.multiclass_classification import MulticlassClassificationMetric, MultitaskMulticlassClassificationMetric
 from .comp.nn.seq2vec.cls_avg_seq2vec import ClsAvgSeq2Vec
 
 from .model.vul_func_predictor import VulFuncPredictor
 from .model.multi_task_classifier import MultiTaskClassifier
+from .model.vul_line_predictor import VulLinePredictor
