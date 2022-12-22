@@ -110,6 +110,25 @@ def read_classification_eval_args():
     parser.add_argument('-average', type=str, default='macro')
     return parser.parse_args()
 
+def read_multi_task_classification_eval_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-version', required=True, type=int)
+    parser.add_argument('-dataset', required=True, type=str)
+    parser.add_argument('-task_names', required=True, type=str, help="Task names joined with ','")
+    parser.add_argument('-subfolder', required=True, type=str, help="folder of which format, such as `splits`")
+    parser.add_argument('-subset', required=True, type=str, help='which split to use')
+    parser.add_argument('-split', default=None, type=str)
+    parser.add_argument('-model_name', type=str, default='model.tar.gz')
+    parser.add_argument('-data_file_name', type=str, default='test.json')
+    parser.add_argument('-run_log_dir', default='treevul', type=str)
+    parser.add_argument('-cuda', type=int)
+    parser.add_argument('-batch_size', default=32, type=int)
+    parser.add_argument('--dump_scores', action='store_true', default=False)
+    parser.add_argument('--all_metrics', action='store_true', default=False)
+
+    parser.add_argument('-average', type=str, default='macro')
+    return parser.parse_args()
+
 def read_aggre_eval_results_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-version', type=str)
