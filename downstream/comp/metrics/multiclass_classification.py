@@ -75,11 +75,14 @@ class MultitaskMulticlassClassificationMetric(Metric):
 
     def get_metric(self, reset: bool):
         multi_task_metrics = {}
+        f1s = []
         for name, metric in zip(self.task_names, self.task_metrics):
             task_metrics = metric.get_metric(reset)
             if self.f1_only:
                 renamed_metrics = {f'{name}_f1': task_metrics['f1']}
+                f1s.append(task_metrics['f1'])
             else:
                 renamed_metrics = {f'{name}_{k}': v for k,v in task_metrics.items()}
             multi_task_metrics.update(renamed_metrics)
+        multi_task_metrics['macro_f1_mean'] = numpy.mean(f1s)
         return multi_task_metrics
