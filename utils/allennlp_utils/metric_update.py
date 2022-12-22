@@ -16,7 +16,8 @@ def update_metric(metric: Metric,
                   probs: Union[torch.Tensor, List[torch.Tensor]],
                   labels: torch.Tensor,
                   mask: Optional[torch.BoolTensor] = None,
-                  flatten_labels: bool = True):
+                  flatten_labels: bool = True,
+                  ignore_shape: bool = False):
     if metric is None:
         return
     metric_class_name = metric.__class__.__name__
@@ -25,9 +26,9 @@ def update_metric(metric: Metric,
     if metric_class_name in use_predicted_idxes_metrics:
         metric(pred_idxes, labels, mask=mask)
     elif metric_class_name in use_probabilities_metrics:
-        if use_probabilities_metrics[metric_class_name]['squeeze'] and len(probs.shape) > 1:
+        if use_probabilities_metrics[metric_class_name]['squeeze'] and (len(probs.shape) > 1 or ignore_shape):
             probs = probs[:, 1]
-        if use_probabilities_metrics[metric_class_name]['expand'] and len(probs.shape) == 1:
+        if use_probabilities_metrics[metric_class_name]['expand'] and (len(probs.shape) == 1 or ignore_shape):
             probs = expand_1d_prob_tensor_to_2d(probs)
         metric(probs, labels, mask=mask)
     else:
@@ -41,6 +42,6 @@ def expand_1d_prob_tensor_to_2d(prob_tensor):
     Example:
     [0.6, 0.8, 0.1] -> [[0.6, 0.4], [0.8, 0.2], [0.1, 0.9]]
     """
-    residual_prob_tensor = torch.ones((prob_tensor.size(0),), device=prob_tensor.device)
+    residual_prob_tensor = torch.ones_like(prob_tensor)
     residual_prob_tensor = residual_prob_tensor - prob_tensor
-    return torch.stack((residual_prob_tensor, prob_tensor), dim=1)
+    return torch.stack((residual_prob_tensor, prob_tensor), dim=-1)
