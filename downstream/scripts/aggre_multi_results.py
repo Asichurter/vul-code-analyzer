@@ -14,9 +14,9 @@ def count_mean_metrics(run_log_dir, version, title, cv=5):
     metrics = {k:[] for k in metric_keys}
     for split in splits:
         result_path = os.path.join(run_log_base_path, split, 'eval_results.json')
-        # Only load first eval result item
+        # Only load latest eval result item
         try:
-            eval_results = load_json(result_path)[0]
+            eval_results = load_json(result_path)[-1]
         except FileNotFoundError:
             print(f'# {split} not found, skip')
             continue
@@ -38,4 +38,4 @@ def count_mean_metrics(run_log_dir, version, title, cv=5):
 
 if __name__ == '__main__':
     args = read_aggre_eval_results_args()
-    count_mean_metrics(args.run_log_dir, args.version, args.title)
+    count_mean_metrics(args.run_log_dir, args.version, args.title, args.cv)
