@@ -19,17 +19,19 @@ from utils.file import save_evaluate_results, dump_pred_results
 from utils.cmd_args import read_classification_eval_args
 
 args = read_classification_eval_args()
+mylogger.info('eval_classification', f"Args: {args}")
 
 version = args.version
 data_file_name = args.data_file_name
 model_name = args.model_name
 cuda_device = args.cuda
-subset = args.subset
-subfolder = args.subfolder
 run_log_dir = args.run_log_dir
 split = args.split
 
-data_base_path = f"/data1/zhijietang/vul_data/datasets/{args.dataset}/{subfolder}/{subset}/"
+if args.data_base_path is None:
+    data_base_path = f"/data1/zhijietang/vul_data/datasets/{args.dataset}/{args.subfolder}/{args.subset}/"
+else:
+    data_base_path = args.data_base_path
 data_file_path = data_base_path + data_file_name
 if split is not None:
     model_base_path = f'/data1/zhijietang/vul_data/run_logs/{run_log_dir}/{version}/rs_{split}/'
