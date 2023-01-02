@@ -9,7 +9,7 @@ import subprocess
 
 sys.path.extend(['/data1/zhijietang/projects/vul-code-analyzer'])
 
-from utils.cmd_args import read_reveal_cv_train_from_config_args, make_cli_args
+from utils.cmd_args import read_cv_train_from_config_args, make_cli_args
 from utils.file import dump_json, dump_text, load_text
 from utils import GlobalLogger as mylogger
 from downstream.scripts.aggre_multi_results import count_mean_metrics
@@ -18,7 +18,7 @@ from downstream.scripts.aggre_multi_results import count_mean_metrics
 from downstream import *
 from common import *
 
-args = read_reveal_cv_train_from_config_args()
+args = read_cv_train_from_config_args()
 data_file_name = args.test_file_name
 
 converted_json_file_path = '/data1/zhijietang/temp/config.json'
@@ -64,6 +64,7 @@ for split in range(args.cv):
         patience = 5
         mylogger.info('reveal_cv_helper', f'Start to test Version {args.version}, Split {split}, File {test_model_file_name}')
         test_cmd_args = {
+            'dataset': args.dataset,
             'version': args.version,
             'subfolder': args.subfolder,
             'subset': f'split_{split}',
@@ -71,7 +72,8 @@ for split in range(args.cv):
             'data_file_name': data_file_name,
             'run_log_dir': args.run_log_dir,
             'split': split,
-            'cuda': cuda_device
+            'cuda': cuda_device,
+            'average': args.average
         }
         test_cmd_arg_str = make_cli_args(test_cmd_args, {})
         test_cmd = f"{python_bin} {eval_script_path}{test_cmd_arg_str}"
