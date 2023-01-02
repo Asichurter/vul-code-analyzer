@@ -33,6 +33,7 @@ class PreLineTruncateCodeCleaner(CodeCleaner):
 
 
 @CodeCleaner.register('space_sub')
+@CodeCleaner.register('space_clean')
 class SpaceSubCodeCleaner(CodeCleaner):
     """
     Replace multiple spaces and tabs(\s) with a single space.
@@ -41,4 +42,27 @@ class SpaceSubCodeCleaner(CodeCleaner):
         code = self.basic_code_process(code)
         # return re.sub(r'^\s+|\s+$|\s+(?=\s)', ' ', code)
         code = re.sub(r' +|\t+', ' ', code)
+        return code
+
+@CodeCleaner.register('space_clean_v2')
+class SpaceCodeCleanerV2(CodeCleaner):
+    """
+    Replace multiple spaces and tabs(\s) with a single space, with addition of
+    replacing multiple \n with single \n (such as Devign data).
+    """
+    def clean_code(self, code: str) -> str:
+        code = self.basic_code_process(code)
+        # return re.sub(r'^\s+|\s+$|\s+(?=\s)', ' ', code)
+        code = re.sub(r' +|\t+', ' ', code)
+        code = re.sub(r'\n+', '\n', code)
+        return code
+
+@CodeCleaner.register('multi_newline_clean')
+class MultipleNewLineCodeCleaner(CodeCleaner):
+    """
+    Replacing multiple \n with single \n (such as Devign data).
+    """
+    def clean_code(self, code: str) -> str:
+        code = self.basic_code_process(code)
+        code = re.sub(r'\n+', '\n', code)
         return code
