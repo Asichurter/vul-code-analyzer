@@ -26,11 +26,30 @@ def read_train_from_config_args():
     parser.add_argument('--add_rs', action='store_true', default=False, help='whether to add the rs_0 the tail of the serilization path')
     return parser.parse_args()
 
-def read_reveal_cv_train_from_config_args():
+def read_train_eval_from_config_args():
+    parser = argparse.ArgumentParser()
+    # Neccessary configs
+    parser.add_argument('-config', type=str, default='', help='config path of training')
+    parser.add_argument('-run_log_dir', type=str, required=True, help='config path of training')
+    parser.add_argument('-data_base_path', required=True, type=str)
+
+    # Extra configs
+    parser.add_argument('-eval_script', type=str, default='eval_classification', help='test script file to do test')
+    parser.add_argument('-test_batch_size', default=32, type=int)
+    parser.add_argument('-test_model_names', type=str, default='model.tar.gz', help="Model names to be tested, split by comma")
+    parser.add_argument('-data_file_name', type=str, default='test.json')
+    parser.add_argument('-average', required=True, type=str, help="average method for classification metric calculation")
+    parser.add_argument('--dump_scores', action='store_true', default=False)
+    parser.add_argument('--add_rs', action='store_true', default=False, help='whether to add the rs_0 the tail of the serilization path')
+    return parser.parse_args()
+
+def read_cv_train_from_config_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-config', type=str, required=True, help='config path of training')
     parser.add_argument('-run_log_dir', type=str, default='reveal_new', help='config path of training')
     parser.add_argument('-version', type=str, required=True, help='subfoler name under run log directory')
+    parser.add_argument('-dataset', type=str, required=True, help='which dataset to test on')
+    parser.add_argument('-average', type=str, required=True, help='average method for metric calculation, "binary", "macro" or "minor"...')
     parser.add_argument('-cv', type=int, default=5, help='number of cross-validation')
     parser.add_argument('-subfolder', required=True, type=str)
     parser.add_argument('-test_filenames', type=str, default='model.tar.gz', help='model file names after training, splitted by comma')
@@ -96,9 +115,10 @@ def read_treevul_classification_eval_args():
 def read_classification_eval_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-version', required=True, type=int)
-    parser.add_argument('-dataset', required=True, type=str)
-    parser.add_argument('-subfolder', required=True, type=str, help="folder of which format, such as `splits`")
-    parser.add_argument('-subset', required=True, type=str, help='which split to use')
+    parser.add_argument('-dataset', default=None, type=str)
+    parser.add_argument('-data_base_path', default=None, type=str, help="You can specify this full path to ignore subfolder, subset options.")
+    parser.add_argument('-subfolder', default=None, type=str, help="folder of which format, such as `splits`")
+    parser.add_argument('-subset', default=None, type=str, help='which split to use')
     parser.add_argument('-split', default=None, type=str)
     parser.add_argument('-model_name', type=str, default='model.tar.gz')
     parser.add_argument('-data_file_name', type=str, default='test.json')
@@ -107,7 +127,7 @@ def read_classification_eval_args():
     parser.add_argument('-batch_size', default=32, type=int)
     parser.add_argument('--dump_scores', action='store_true', default=False)
 
-    parser.add_argument('-average', type=str, default='macro')
+    parser.add_argument('-average', required=True, type=str)
     return parser.parse_args()
 
 def read_multi_task_classification_eval_args():
@@ -134,4 +154,5 @@ def read_aggre_eval_results_args():
     parser.add_argument('-version', type=str)
     parser.add_argument('-run_log_dir', type=str)
     parser.add_argument('-title', type=str)
+    parser.add_argument('-cv', type=int, default=5)
     return parser.parse_args()
