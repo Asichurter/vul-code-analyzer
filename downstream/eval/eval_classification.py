@@ -99,6 +99,11 @@ result_dict = {
     # 'AUC': roc_auc_score(all_ref, all_score, average=args.average)
 }
 
+if args.extra_averages is not None:
+    extra_average_methods = args.extra_averages.split(',')
+    for average in extra_average_methods:
+        result_dict[f'{average}_F1'] = f1_score(all_ref, all_pred, average=average)
+
 print('*'*80)
 pprint(result_dict)
 

@@ -56,6 +56,9 @@ ret = train_model_from_file(
     force=True,
     # include_package=['core'],
 )
+# Try release GPU memory
+del ret
+torch.cuda.empty_cache()
 
 ############### Do Test ###############
 for test_model_file_name in args.test_model_names.split(','):
@@ -68,9 +71,12 @@ for test_model_file_name in args.test_model_names.split(','):
         'model_name': test_model_file_name,
         'data_file_name': args.data_file_name,
         'cuda': cuda_device,
-        'average': args.average
+        'average': args.average,
+        'extra_averages': args.extra_averages,
+        **json.loads(args.extra_eval_configs)
     }
-    test_cmd_arg_str = make_cli_args(test_cmd_args, {})
+    two_bar_args = {'dump_scores': None}
+    test_cmd_arg_str = make_cli_args(test_cmd_args, two_bar_args)
     test_cmd = f"{python_bin} {eval_script_path}{test_cmd_arg_str}"
 
     # Try multiple times for test script running
