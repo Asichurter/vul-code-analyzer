@@ -2,10 +2,12 @@ from typing import List, Tuple, Optional, Iterable
 
 import torch
 from allennlp.data import Token, Vocabulary
+from itertools import chain
 
 codebert_families = ['codebert']
 unixcoder_families = ['unixcoder_base', 'unixcoder_base_nine']
 microsoft_pretrain_families = codebert_families + unixcoder_families
+no_operation_types = ['pretrained_bpe']
 
 def pre_handle_special_tokenizer_tokens(special_tokenizer_token_handler_type: str,
                                         tokens: List[Token],
@@ -41,6 +43,10 @@ def post_handle_special_tokenizer_tokens(special_tokenizer_token_handler_type: s
             tokens.extend(token_list + [Token('</s>')])
     elif special_tokenizer_token_handler_type in unixcoder_families:
         tokens = make_unixcoder_input(token_inputs, mode)
+    elif special_tokenizer_token_handler_type in no_operation_types:
+        tokens = []
+        for token_list in token_inputs:
+            tokens.extend(token_list)
     else:
         raise NotImplementedError
 
@@ -60,7 +66,7 @@ def drop_tokenizer_special_tokens(drop_tokenizer_special_token_type: str, embedd
     elif tokenizer_type in unixcoder_families:
         return embedded_code[:, 3:-1], code_mask[:, 3:-1]
     else:
-        raise NotImplementedError
+        raise NotImplementedError(f"Not supported type for drop_tokenizer_special_tokens: {drop_tokenizer_special_token_type}")
 
 
 def sample_replace_tokens(tokenizer_type: str,

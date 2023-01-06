@@ -9,6 +9,9 @@ from allennlp.models import Model
 from allennlp.training import TrainerCallback
 from allennlp.models.archival import archive_model
 from utils.stat import stat_model_param_number
+from utils.file import read_dumped
+
+from allennlp.data.vocabulary import Vocabulary
 
 from utils import GlobalLogger as mylogger
 
@@ -217,5 +220,26 @@ class ModelEpochIncrementCallback(TrainerCallback):
         **kwargs,
     ) -> None:
         trainer.model.cur_epoch += 1
+
+@TrainerCallback.register('add_pretraiend_vocab_tokens')
+class AddPretrainedVocabTokensCallback(TrainerCallback):
+    def __init__(self,
+                 pretrained_config_path: str,
+                 namespace: str,
+                 serialization_dir=None):
+        super().__init__(serialization_dir)
+        self.namespace = namespace
+        self.pretrained_config_path = pretrained_config_path
+
+    def on_start(self,
+                 trainer: "GradientDescentTrainer",
+                 is_primary: bool = True,
+                 **kwargs) -> None:
+        pretrained_config = read_dumped(self.pretrained_config_path)
+        vocab_to_load = pretrained_config['model']['vocab']
+        tokens_to_add = [t for t in vocab_to_load]
+        print(f"[AddPretrainedVocabTokensCallback] Loading {len(tokens_to_add)} tokens from pretrained config: {self.pretrained_config_path}")
+        trainer.model.vocab.add_tokens_to_namespace(tokens_to_add, self.namespace)
+        print(f'[AddPretrainedVocabTokensCallback] Current vocab: {trainer.model.vocab}')
 
 
