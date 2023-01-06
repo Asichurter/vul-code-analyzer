@@ -9,7 +9,7 @@ from allennlp.common import Params
 from allennlp.data import Vocabulary
 from allennlp.data.data_loaders import MultiProcessDataLoader
 from allennlp.models.model import Model
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef
 
 sys.path.extend(['/data1/zhijietang/projects/vul-code-analyzer'])
 
@@ -25,13 +25,11 @@ version = args.version
 data_file_name = args.data_file_name
 model_name = args.model_name
 cuda_device = args.cuda
-subset = args.subset
-subfolder = args.subfolder
 run_log_dir = args.run_log_dir
 split = args.split
 task_names = args.task_names.split(',')
 
-data_base_path = f"/data1/zhijietang/vul_data/datasets/{args.dataset}/{subfolder}/{subset}/"
+data_base_path = args.data_base_path
 data_file_path = data_base_path + data_file_name
 if split is not None:
     model_base_path = f'/data1/zhijietang/vul_data/run_logs/{run_log_dir}/{version}/rs_{split}/'
@@ -91,20 +89,37 @@ if cuda_device != -1:
     torch.cuda.set_device(cuda_device)
 
 all_ref, all_pred, all_score = predict_on_dataloader(model, data_loader, len(task_names))
-# all_score = torch.Tensor(all_score).exp().softmax(-1)[:,1].tolist()
 result_dict = {}
-task_f1s = []
+task_f1s, task_mccs = [], []
+
 for i,task_name in enumerate(task_names):
-    task_metrics = {f'{task_name}_f1_score': f1_score(all_ref[i], all_pred[i], average=args.average)}
+    if len(set(all_ref[i])) == 2:
+        print(f'\nDetecting size of label space of {task_name} is 2, switching average mode to "binary" !\n')
+        task_average = "binary"
+    else:
+        task_average = args.average
+
+    # Necessary Metrics
+    task_metrics = {f'{task_name}_f1_score': f1_score(all_ref[i], all_pred[i], average=task_average),
+                    f'{task_name}_mcc': matthews_corrcoef(all_ref[i], all_pred[i])}
     task_f1s.append(task_metrics[f'{task_name}_f1_score'])
+    task_mccs.append(task_metrics[f'{task_name}_mcc'])
+    # Extra Averaged Metrics
+    if args.extra_averages is not None:
+        for extra_average in args.extra_averages.split(','):
+            task_metrics[f'{task_name}_mcc'] = f1_score(all_ref[i], all_pred[i], average=extra_average)
+
+    # Append Other Classification Metrics
     if args.all_metrics:
         task_metrics.update({
             f'{task_name}_accuracy': accuracy_score(all_ref[i], all_pred[i]),
-            f'{task_name}_precision': precision_score(all_ref[i], all_pred[i], average=args.average),
-            f'{task_name}_recall': recall_score(all_ref[i], all_pred[i], average=args.average),
+            f'{task_name}_precision': precision_score(all_ref[i], all_pred[i], average=task_average),
+            f'{task_name}_recall': recall_score(all_ref[i], all_pred[i], average=task_average),
         })
     result_dict.update(task_metrics)
+
 result_dict['_f1_mean'] = numpy.mean(task_f1s)
+result_dict['_mcc_mean'] = numpy.mean(task_mccs)
 
 print('*'*80)
 pprint(result_dict)
