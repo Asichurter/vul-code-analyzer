@@ -39,6 +39,9 @@ def read_train_eval_from_config_args():
     parser.add_argument('-test_model_names', type=str, default='model.tar.gz', help="Model names to be tested, split by comma")
     parser.add_argument('-data_file_name', type=str, default='test.json')
     parser.add_argument('-average', required=True, type=str, help="average method for classification metric calculation")
+    parser.add_argument('-extra_averages', default=None, type=str, help="Extra average methods, split by comma")
+    parser.add_argument('-extra_eval_configs', default="{}", type=str, help="Json str to configure params to eval script")
+
     parser.add_argument('--dump_scores', action='store_true', default=False)
     parser.add_argument('--add_rs', action='store_true', default=False, help='whether to add the rs_0 the tail of the serilization path')
     return parser.parse_args()
@@ -115,38 +118,44 @@ def read_treevul_classification_eval_args():
 def read_classification_eval_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-version', required=True, type=int)
-    parser.add_argument('-dataset', default=None, type=str)
+    parser.add_argument('-run_log_dir', required=True, type=str)
     parser.add_argument('-data_base_path', default=None, type=str, help="You can specify this full path to ignore subfolder, subset options.")
+    parser.add_argument('-dataset', default=None, type=str)
     parser.add_argument('-subfolder', default=None, type=str, help="folder of which format, such as `splits`")
     parser.add_argument('-subset', default=None, type=str, help='which split to use')
     parser.add_argument('-split', default=None, type=str)
+
     parser.add_argument('-model_name', type=str, default='model.tar.gz')
     parser.add_argument('-data_file_name', type=str, default='test.json')
-    parser.add_argument('-run_log_dir', default='treevul', type=str)
-    parser.add_argument('-cuda', type=int)
+    parser.add_argument('-cuda', type=int, default=0)
     parser.add_argument('-batch_size', default=32, type=int)
     parser.add_argument('--dump_scores', action='store_true', default=False)
 
     parser.add_argument('-average', required=True, type=str)
+    parser.add_argument('-extra_averages', default=None, type=str, help="Extra average methods, split by comma")
     return parser.parse_args()
 
 def read_multi_task_classification_eval_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-run_log_dir', required=True, type=str)
     parser.add_argument('-version', required=True, type=int)
-    parser.add_argument('-dataset', required=True, type=str)
     parser.add_argument('-task_names', required=True, type=str, help="Task names joined with ','")
-    parser.add_argument('-subfolder', required=True, type=str, help="folder of which format, such as `splits`")
-    parser.add_argument('-subset', required=True, type=str, help='which split to use')
+    parser.add_argument('-data_base_path', default=None, type=str, help="You can specify this full path to ignore subfolder, subset options.")
+
+    # parser.add_argument('-dataset', required=True, type=str)
+    # parser.add_argument('-subfolder', default=None, type=str, help="folder of which format, such as `splits`")
+    # parser.add_argument('-subset', default=None, type=str, help='which split to use')
+
     parser.add_argument('-split', default=None, type=str)
+    parser.add_argument('-cuda', type=int, default=0)
     parser.add_argument('-model_name', type=str, default='model.tar.gz')
     parser.add_argument('-data_file_name', type=str, default='test.json')
-    parser.add_argument('-run_log_dir', default='treevul', type=str)
-    parser.add_argument('-cuda', type=int)
     parser.add_argument('-batch_size', default=32, type=int)
     parser.add_argument('--dump_scores', action='store_true', default=False)
     parser.add_argument('--all_metrics', action='store_true', default=False)
 
     parser.add_argument('-average', type=str, default='macro')
+    parser.add_argument('-extra_averages', default=None, type=str, help="Extra average methods, split by comma")
     return parser.parse_args()
 
 def read_aggre_eval_results_args():
