@@ -107,7 +107,7 @@ for i,task_name in enumerate(task_names):
     # Extra Averaged Metrics
     if args.extra_averages is not None:
         for extra_average in args.extra_averages.split(','):
-            task_metrics[f'{task_name}_mcc'] = f1_score(all_ref[i], all_pred[i], average=extra_average)
+            task_metrics[f'{task_name}_{extra_average}_f1'] = f1_score(all_ref[i], all_pred[i], average=extra_average)
 
     # Append Other Classification Metrics
     if args.all_metrics:
