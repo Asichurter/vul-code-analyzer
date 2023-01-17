@@ -53,12 +53,3 @@ ret = train_model_from_file(
 )
 # Exit to release GPU memory
 sys.exit(0)
-
-
-# [[0,0,1],
-#  [0,1,0],
-#  [0,0,0]]
-#
-# [[1,0,1],
-#  [0,1,0],
-#  [1,0,0]]
