@@ -2,16 +2,20 @@ import argparse
 from typing import Dict
 
 
-def make_cli_args(one_bar_args: Dict, two_bar_args: Dict):
+def make_cli_args(one_bar_args: Dict, two_bar_args: Dict, skip_none: bool = False):
     args = ''
     for argkey, argval in one_bar_args.items():
         if argval is None:
+            if skip_none:
+                continue
             arg = f' -{argkey}'
         else:
             arg = f' -{argkey} {argval}'
         args += arg
     for argkey, argval in two_bar_args.items():
         if argval is None:
+            if skip_none:
+                continue
             arg = f' --{argkey}'
         else:
             arg = f' --{argkey} {argval}'
@@ -165,3 +169,23 @@ def read_aggre_eval_results_args():
     parser.add_argument('-title', type=str)
     parser.add_argument('-cv', type=int, default=5)
     return parser.parse_args()
+
+def read_pdg_eval_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-run_log_dir', required=True, type=str)
+    parser.add_argument('-version', required=True, type=int)
+    parser.add_argument('-model_name', type=str, default='model.tar.gz')
+    parser.add_argument('-data_base_path', required=True, type=str)
+    parser.add_argument('-cuda', type=int, default=0)
+    parser.add_argument('-vol_range', required=True, type=str, help="[left, right] format, left-close right-close interval")
+
+    return parser.parse_args()
+
+
+
+
+
+
+
+
+

@@ -75,8 +75,8 @@ for test_model_file_name in args.test_model_names.split(','):
         'extra_averages': args.extra_averages,
         **json.loads(args.extra_eval_configs)
     }
-    two_bar_args = {'dump_scores': None}
-    test_cmd_arg_str = make_cli_args(test_cmd_args, two_bar_args)
+    two_bar_args = {'dump_scores': ""}
+    test_cmd_arg_str = make_cli_args(test_cmd_args, two_bar_args, skip_none=True)
     test_cmd = f"{python_bin} {eval_script_path}{test_cmd_arg_str}"
 
     # Try multiple times for test script running
