@@ -71,7 +71,8 @@ for test_model_file_name in args.test_model_names.split(','):
         'model_name': test_model_file_name,
         'data_file_name': args.data_file_name,
         'cuda': cuda_device,
-        'average': args.average
+        'average': args.average,
+        **json.loads(args.extra_eval_configs)
     }
     test_cmd_arg_str = make_cli_args(test_cmd_args, {})
     test_cmd = f"{python_bin} {eval_script_path}{test_cmd_arg_str}"

@@ -8,7 +8,7 @@ from allennlp.common import Params
 from allennlp.data import Vocabulary
 from allennlp.data.data_loaders import MultiProcessDataLoader
 from allennlp.models.model import Model
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef
 
 sys.path.extend(['/data1/zhijietang/projects/vul-code-analyzer'])
 
@@ -96,6 +96,7 @@ result_dict = {
     'Precision': precision_score(all_ref, all_pred, average=args.average),
     'Recall': recall_score(all_ref, all_pred, average=args.average),
     'F1-Score': f1_score(all_ref, all_pred, average=args.average),
+    'MCC': matthews_corrcoef(all_ref, all_pred),
     # 'AUC': roc_auc_score(all_ref, all_score, average=args.average)
 }
 
