@@ -7,8 +7,8 @@
 
 import torch
 
-weight_path = '/data1/zhijietang/vul_data/run_logs/pretrain/57/state_epoch_4.th'
-target_dump_path = '/data1/zhijietang/vul_data/transformers_repos/hybrid-pdg-best-e4/pytorch_model.bin'
+weight_path = '/data1/zhijietang/vul_data/run_logs/pretrain/81/state_epoch_4.th'
+target_dump_path = '/data1/zhijietang/vul_data/transformers_repos/codebert-cdg-mlm/pytorch_model.bin'
 real_vocab_size = 50265     # CodeBERT
 
 extra_weight_path = '/data1/zhijietang/vul_data/transformers_repos/codebert-mlm/pytorch_model.bin'

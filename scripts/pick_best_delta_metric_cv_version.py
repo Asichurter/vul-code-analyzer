@@ -5,8 +5,8 @@ from utils.file import read_dumped
 from allennlp.training.optimizers import Optimizer
 
 
-base_ver_run_log_cv_path = "/data1/zhijietang/vul_data/run_logs/vul_func_pred/38"
-comp_ver_run_log_cv_path = "/data1/zhijietang/vul_data/run_logs/vul_func_pred/39"
+base_ver_run_log_cv_path = "/data1/zhijietang/vul_data/run_logs/vul_func_pred/3"
+comp_ver_run_log_cv_path = "/data1/zhijietang/vul_data/run_logs/vul_func_pred/4"
 cv = 10
 metric_key = 'F1-Score'
 compare_direction = 1   # 1 or -1
