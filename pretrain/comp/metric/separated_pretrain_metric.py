@@ -187,3 +187,11 @@ class SeparatedSingleMaskF1(Metric):
 
     def reset(self) -> None:
         self.f1.reset()
+
+    def get_detailed_metrics(self):
+        return {
+            'tp': self.f1.tp,
+            'fp': self.f1.fp,
+            'tn': self.f1.tn,
+            'fn': self.f1.fn,
+        }
