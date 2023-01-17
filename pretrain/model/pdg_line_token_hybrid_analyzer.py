@@ -198,7 +198,7 @@ class CodeLineTokenHybridPDGAnalyzer(Model):
                 mlm_sampling_weights: Optional[torch.Tensor] = None,
                 mlm_span_tags: Optional[torch.Tensor] = None,
                 token_data_token_mask: Optional[torch.Tensor] = None,
-                meta_data: Optional[List] = None,
+                meta_data: Optional[List] = [],
                 **kwargs) -> Dict[str, torch.Tensor]:
         # [Outline]
         # 1. Token-based Pretrain Objective Computing.
