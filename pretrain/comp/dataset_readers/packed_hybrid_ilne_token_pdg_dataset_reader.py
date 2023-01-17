@@ -43,6 +43,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
                  token_data_edge_mask_strategy: str = 'none',       # To exclude some token-pairs when calculating loss of token-data prediction, set this param
                  model_mode: Optional[str] = None,
                  debug: bool = False,
+                 is_train: bool = True,
                  **kwargs):
         super().__init__(**kwargs)
         self.code_tokenizer = code_tokenizer
@@ -70,6 +71,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
         self.token_data_edge_mask_func = dispatch_token_mask_method(token_data_edge_mask_strategy)
         self.model_mode = model_mode
 
+        self.is_train = is_train
         self.actual_read_samples = 0
         self.debug = debug
 
@@ -226,8 +228,28 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
                                                                        mode=self.model_mode)
         return line_tokens, torch.LongTensor(line_idxes), current_line-1
 
+    def _test_text_to_instance(self, packed_data: Dict) -> Tuple[bool, Instance]:
+        raw_code = packed_data['raw_code']
+        raw_code = self.code_cleaner.clean_code(raw_code)
+        tokenized_code = self.code_tokenizer.tokenize(raw_code)
+        tokenized_code, token_line_idxes, line_count = self.truncate_and_make_line_index(tokenized_code)
+        check_pretrain_code_field_correctness(self.special_tokenizer_token_handler_type, raw_code, tokenized_code, token_line_idxes, None, input_mode_count=1)
+
+        # Ignore single-line code samples.
+        if line_count <= 1:
+            return False, Instance({})
+
+        fields = {
+            'code': TextField(tokenized_code, self.code_token_indexers),
+            'line_idxes': TensorField(token_line_idxes),
+            'vertice_num': TensorField(torch.Tensor([line_count])), # num. of line is vertice num.
+        }
+        return True, Instance(fields)
 
     def text_to_instance(self, packed_pdg: Dict) -> Tuple[bool, Instance]:
+        if not self.is_train:
+            return self._test_text_to_instance(packed_pdg)
+
         raw_code = packed_pdg['raw_code']
         line_edges = packed_pdg['line_edges']
         # original_total_line = packed_pdg['total_line']
