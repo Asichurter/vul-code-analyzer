@@ -4,7 +4,7 @@ import numpy
 import torch
 from allennlp.training.metrics import Metric
 
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef
 
 @Metric.register('multiclass_classification')
 class MulticlassClassificationMetric(Metric):
@@ -38,6 +38,7 @@ class MulticlassClassificationMetric(Metric):
         precision = precision_score(self.labels, self.predictions, average=self.average, zero_division=self.zero_division).round(4)
         recall = recall_score(self.labels, self.predictions, average=self.average, zero_division=self.zero_division).round(4)
         f1 = f1_score(self.labels, self.predictions, average=self.average, zero_division=self.zero_division).round(4)
+        mcc = numpy.round(matthews_corrcoef(self.labels, self.predictions), 4)
 
         if reset:
             self.reset()
@@ -45,7 +46,8 @@ class MulticlassClassificationMetric(Metric):
             'accuracy': accuracy,
             'precision': precision,
             'recall': recall,
-            'f1': f1
+            'f1': f1,
+            'mcc': mcc
         }
 
 @Metric.register('multi_task_multi_class')
