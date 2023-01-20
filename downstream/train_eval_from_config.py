@@ -5,7 +5,9 @@ import sys
 import subprocess
 from allennlp.commands.train import train_model_from_file
 
-sys.path.extend(['/data1/zhijietang/projects/vul-code-analyzer'])
+base_dir = json.load(open('global_vars.json'))['base_dir']
+
+sys.path.extend([f'/{base_dir}/zhijietang/projects/vul-code-analyzer'])
 
 from utils.cmd_args import read_train_eval_from_config_args
 from utils.file import dump_json
@@ -18,10 +20,10 @@ from common import *
 
 args = read_train_eval_from_config_args()
 
-python_bin = '/data1/zhijietang/miniconda3/bin/python'
-eval_script_path = f'/data1/zhijietang/projects/vul-code-analyzer/downstream/eval/{args.eval_script}.py'
-converted_json_file_path = f'/data1/zhijietang/temp/config.json'
-serialization_dir = '/data1/zhijietang/vul_data/run_logs/{}/{}/'
+python_bin = f'/{base_dir}/zhijietang/miniconda3/bin/python'
+eval_script_path = f'/{base_dir}/zhijietang/projects/vul-code-analyzer/downstream/eval/{args.eval_script}.py'
+converted_json_file_path = f'/{base_dir}/zhijietang/temp/config.json'
+serialization_dir = f'/{base_dir}' + '/zhijietang/vul_data/run_logs/{}/{}/'
 
 ############### Do Preparations ###############
 if args.add_rs:

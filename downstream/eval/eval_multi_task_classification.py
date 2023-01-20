@@ -3,6 +3,7 @@ from pprint import pprint
 from typing import Tuple, List
 from tqdm import tqdm
 import numpy
+import json
 
 import torch
 from allennlp.common import Params
@@ -11,7 +12,13 @@ from allennlp.data.data_loaders import MultiProcessDataLoader
 from allennlp.models.model import Model
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef
 
-sys.path.extend(['/data1/zhijietang/projects/vul-code-analyzer'])
+try:
+    base_dir = json.load(open('../global_vars.json'))['base_dir']
+except:
+    print(f'global_vars.json not found, try cwd...')
+    base_dir = json.load(open('global_vars.json'))['base_dir']
+
+sys.path.extend([f'/{base_dir}/zhijietang/projects/vul-code-analyzer'])
 
 from downstream import *
 from utils import GlobalLogger as mylogger
@@ -32,9 +39,9 @@ task_names = args.task_names.split(',')
 data_base_path = args.data_base_path
 data_file_path = data_base_path + data_file_name
 if split is not None:
-    model_base_path = f'/data1/zhijietang/vul_data/run_logs/{run_log_dir}/{version}/rs_{split}/'
+    model_base_path = f'/{base_dir}/zhijietang/vul_data/run_logs/{run_log_dir}/{version}/rs_{split}/'
 else:
-    model_base_path = f'/data1/zhijietang/vul_data/run_logs/{run_log_dir}/{version}/'
+    model_base_path = f'/{base_dir}/zhijietang/vul_data/run_logs/{run_log_dir}/{version}/'
 model_path = model_base_path + model_name
 
 batch_size = args.batch_size
