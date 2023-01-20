@@ -49,14 +49,17 @@ def generate_data_from_scratch():
     raw_code_base_vol_path = '/data1/zhijietang/vul_data/datasets/docker/cppfiles/'
     line_level_data_path_temp = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_vol_data/packed_vol_{}.pkl'
     token_level_data_path_temp = '/data1/zhijietang/vul_data/datasets/docker/joern_dev_analysis_results/joern_parsed_raw_vol{}.pkl'
-    tgt_dump_base_path_temp = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data/packed_hybrid_vol_{}.pkl'
+    tgt_dump_base_path_temp = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data_testexp/packed_hybrid_vol_{}.pkl'
+    # tgt_dump_base_path_temp = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data/packed_hybrid_vol_{}.pkl'
     # tgt_dump_base_path_temp = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data_allvs/packed_hybrid_vol_{}.pkl'
 
     multi_vs_multi_strategy = 'first'
 
-    tokenizer_name = 'microsoft/codebert-base'
+    tokenizer_name = 'microsoft/unixcoder-base'
+    tokenizer_name_postfix = '/noheader'
+    tokenizer_type = 'codebert'
     tokenizer = PretrainedTransformerTokenizer(tokenizer_name)
-    vols = list(range(0,229))
+    vols = list(range(20,21))
 
     for vol in vols:
         line_vol_data_path = line_level_data_path_temp.format(vol)
@@ -75,6 +78,8 @@ def generate_data_from_scratch():
             line_data = line_vol_data_id_map[data_id]
             raw_code = convert_func_signature_to_one_line(code=line_data['code'], redump=False)
             tokens = tokenizer.tokenize(raw_code)
+            tokens = pre_handle_special_tokenizer_tokens(tokenizer_type, tokens)
+            tokens, _ = post_handle_special_tokenizer_tokens(tokenizer_type, (tokens,), None, '<encoder-only>') # mode is only for placeholder
             _, token_data_edges = build_token_level_pdg_struct(raw_code, tokens,
                                                                token_data['nodes'], token_data['edges'],
                                                                multi_vs_multi_strategy=multi_vs_multi_strategy,
@@ -93,7 +98,7 @@ def generate_data_from_scratch():
                 # 'raw_code': line_data['code'],        # Really raw code, no space trimming
                 'raw_code': raw_code,                   # Signature-converted is indispensable
                 'processed_token_data_edges': {         # Dump processed token data edges
-                    tokenizer_name: pdg_data_edges      # Since it is sensitive to tokenizer, we have to highlight the tokenizer name here
+                    tokenizer_name + tokenizer_name_postfix: pdg_data_edges      # Since it is sensitive to tokenizer, we have to highlight the tokenizer name here
                 }
 
             }
@@ -112,10 +117,11 @@ def update_token_data_tokenizer(check_overwrite=True):
 
     multi_vs_multi_strategy = 'first'
 
-    tokenizer_name = 'microsoft/unixcoder-base-nine'
-    tokenizer_type = 'unixcoder_base_nine'
+    tokenizer_name = 'microsoft/graphcodebert-base'
+    tokenizer_name_postfix = ''
+    tokenizer_type = 'codebert'
     tokenizer = PretrainedTransformerTokenizer(tokenizer_name)
-    vols = list(range(200,206))
+    vols = list(range(210,229))
 
     for vol in vols:
         line_vol_data_path = line_level_data_path_temp.format(vol)
@@ -156,14 +162,15 @@ def update_token_data_tokenizer(check_overwrite=True):
             data_id = tgt_data['id']
             new_token_data_edge = new_token_data_edges[id_to_new_token_data_edges_idx_map[data_id]]
 
-            if check_overwrite and tokenizer_name in tgt_data['processed_token_data_edges']:
-                assert False, f'{new_token_data_edge} has existed in processed_token_data_edges!'
-            tgt_data['processed_token_data_edges'][tokenizer_name] = new_token_data_edge
+            tokenizer_name_key = tokenizer_name + tokenizer_name_postfix
+            if check_overwrite and tokenizer_name_key in tgt_data['processed_token_data_edges']:
+                assert False, f'{tokenizer_name_key} has existed in processed_token_data_edges!'
+            tgt_data['processed_token_data_edges'][tokenizer_name_key] = new_token_data_edge
 
         print(f'Vol. {vol} ({len(tgt_vol_data)} items) saved to {tgt_dump_base_path_temp.format(vol)}')
         dump_pickle(tgt_vol_data, tgt_dump_base_path_temp.format(vol))
 
 
 if __name__ == '__main__':
-    # generate_data_from_scratch()
-    update_token_data_tokenizer(False)
+    generate_data_from_scratch()
+    # update_token_data_tokenizer(False)

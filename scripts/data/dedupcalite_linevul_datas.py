@@ -26,6 +26,12 @@ def extract_func_sig_by_lexer(func):
     filtered_text = ' '.join([t[-1] for t in tokens])
     return filtered_text
 
+def extract_data_items(_data):
+    return {
+        'code': _data['func_before'],
+        'vul': int(data['vul'])
+    }
+
 print(f'Reading data...')
 original_datas = read_dumped(original_data_path)
 # Note: Since deduplicate results depend on order of items,
@@ -34,7 +40,7 @@ original_datas = read_dumped(original_data_path)
 #       they are included and only exclude these duplicated negative samples
 original_datas = sorted(original_datas, key=lambda x: x['vul'], reverse=True)
 
-sig_extractor = extract_func_sig_by_lexer
+sig_extractor = extract_func_sig
 code_key = 'func_before' # code'
 
 print(f'Extracting signatures...')
@@ -69,9 +75,10 @@ for i, data in tqdm(enumerate(original_datas), total=len(original_datas)):
         continue
     else:
         cur_sigs.add(func_sigs[i])
-        deduplicated_datas.append(data)
+        deduplicated_datas.append(extract_data_items(data))
+
 print(f'Excluded: {len(original_datas) - len(deduplicated_datas)} / {len(original_datas)}')
 
 
-# print(f'Dumping to {tgt_data_dump_path}')
-# dump_json(deduplicated_datas, tgt_data_dump_path)
+print(f'Dumping to {tgt_data_dump_path}')
+dump_pickle(deduplicated_datas, tgt_data_dump_path)
