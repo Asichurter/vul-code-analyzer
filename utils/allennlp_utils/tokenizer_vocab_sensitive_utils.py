@@ -6,7 +6,9 @@ from itertools import chain
 
 codebert_families = ['codebert']
 unixcoder_families = ['unixcoder_base', 'unixcoder_base_nine']
+codet5_families = ['codet5']
 microsoft_pretrain_families = codebert_families + unixcoder_families
+common_tokenization_families = codebert_families + codet5_families
 no_operation_types = ['pretrained_bpe']
 
 def pre_handle_special_tokenizer_tokens(special_tokenizer_token_handler_type: str,
@@ -15,7 +17,7 @@ def pre_handle_special_tokenizer_tokens(special_tokenizer_token_handler_type: st
     """
         Truncate special tokens, leave valid tokens only.
     """
-    if special_tokenizer_token_handler_type in microsoft_pretrain_families:
+    if special_tokenizer_token_handler_type in microsoft_pretrain_families or special_tokenizer_token_handler_type in common_tokenization_families:
         return tokens[1:-1]
     else:
         return tokens
@@ -37,7 +39,7 @@ def post_handle_special_tokenizer_tokens(special_tokenizer_token_handler_type: s
     """
         Revert special tokens to make input for pre-trained model.
     """
-    if special_tokenizer_token_handler_type in codebert_families:
+    if special_tokenizer_token_handler_type in common_tokenization_families:
         tokens = [Token('<s>')]
         for token_list in token_inputs:
             tokens.extend(token_list + [Token('</s>')])
