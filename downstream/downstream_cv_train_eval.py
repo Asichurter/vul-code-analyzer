@@ -4,10 +4,12 @@ import _jsonnet
 import json
 import torch
 import sys
+import platform
 from allennlp.commands.train import train_model_from_file
 import subprocess
 
-sys.path.extend(['/data1/zhijietang/projects/vul-code-analyzer'])
+base_dir = json.load(open('global_vars.json'))[platform.node()]['base_dir']
+sys.path.extend([f'/{base_dir}/zhijietang/projects/vul-code-analyzer'])
 
 from utils.cmd_args import read_cv_train_from_config_args, make_cli_args
 from utils.file import dump_json, dump_text, load_text
@@ -21,14 +23,14 @@ from common import *
 args = read_cv_train_from_config_args()
 data_file_name = args.test_file_name
 
-converted_json_file_path = '/data1/zhijietang/temp/config.json'
-temp_jsonnet_path = '/data1/zhijietang/temp/temp.jsonnet'
-python_bin = '/data1/zhijietang/miniconda3/bin/python'
+converted_json_file_path = f'/{base_dir}/zhijietang/temp/config.json'
+temp_jsonnet_path = f'/{base_dir}/zhijietang/temp/temp.jsonnet'
+python_bin = f'/{base_dir}/zhijietang/miniconda3/bin/python'
 # eval_script_path = '/'.join(__file__.split('/')[:-1]) + f'/eval/{args.eval_script}.py'
-eval_script_path = f'/data1/zhijietang/projects/vul-code-analyzer/downstream/eval/{args.eval_script}.py'
+eval_script_path = f'/{base_dir}/zhijietang/projects/vul-code-analyzer/downstream/eval/{args.eval_script}.py'
 
 for split in range(args.cv):
-    serialization_dir = f'/data1/zhijietang/vul_data/run_logs/{args.run_log_dir}/{args.version}/rs_{split}'
+    serialization_dir = f'/{base_dir}/zhijietang/vul_data/run_logs/{args.run_log_dir}/{args.version}/rs_{split}'
     split_jsonnet_config = load_text(args.config)
     split_jsonnet_config = split_jsonnet_config.replace('local split_index = 0;', f'local split_index = {split};')
     split_config = json.loads(_jsonnet.evaluate_snippet("", split_jsonnet_config))

@@ -4,6 +4,7 @@ from typing import Tuple, List
 from tqdm import tqdm
 import numpy
 import json
+import platform
 
 import torch
 from allennlp.common import Params
@@ -13,10 +14,10 @@ from allennlp.models.model import Model
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, matthews_corrcoef
 
 try:
-    base_dir = json.load(open('../global_vars.json'))['base_dir']
+    base_dir = json.load(open('../global_vars.json'))[platform.node()]['base_dir']
 except:
     print(f'global_vars.json not found, try cwd...')
-    base_dir = json.load(open('global_vars.json'))['base_dir']
+    base_dir = json.load(open('global_vars.json'))[platform.node()]['base_dir']
 
 sys.path.extend([f'/{base_dir}/zhijietang/projects/vul-code-analyzer'])
 

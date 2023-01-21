@@ -3,10 +3,10 @@ import json
 import torch
 import sys
 import subprocess
+import platform
 from allennlp.commands.train import train_model_from_file
 
-base_dir = json.load(open('global_vars.json'))['base_dir']
-
+base_dir = json.load(open('global_vars.json'))[platform.node()]['base_dir']
 sys.path.extend([f'/{base_dir}/zhijietang/projects/vul-code-analyzer'])
 
 from utils.cmd_args import read_train_eval_from_config_args

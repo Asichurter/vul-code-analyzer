@@ -1,12 +1,16 @@
 import _jsonnet
 import json
 import sys
+import platform
 from allennlp.commands.train import train_model_from_file
 
+from allennlp.data.vocabulary import Vocabulary
+
 if __name__ == '__main__':
-    base_dir = json.load(open('global_vars.json'))['base_dir']
+    base_dir = json.load(open('global_vars.json'))[platform.node()]['base_dir']
     sys.path.extend([f'/{base_dir}/zhijietang/projects/vul-code-analyzer'])
 
+    from pretrain import *
     from utils.cmd_args import read_train_from_config_args
     from utils.file import dump_json
     from utils import GlobalLogger as mylogger
