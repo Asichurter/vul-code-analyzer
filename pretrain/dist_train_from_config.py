@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     args = read_train_from_config_args()
     converted_json_file_path = f'/{base_dir}/zhijietang/temp/config.json'
-    serialization_dir = f'{base_dir}' + '/zhijietang/vul_data/run_logs/pretrain/{}'
+    serialization_dir = f'/{base_dir}' + '/zhijietang/vul_data/run_logs/pretrain/{}'
 
     config_json = json.loads(_jsonnet.evaluate_file(args.config))
     extra = config_json.pop('extra')
