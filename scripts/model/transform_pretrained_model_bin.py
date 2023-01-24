@@ -7,9 +7,11 @@
 
 import torch
 
-weight_path = '/data1/zhijietang/vul_data/run_logs/pretrain/81/state_epoch_4.th'
-target_dump_path = '/data1/zhijietang/vul_data/transformers_repos/codebert-cdg-mlm/pytorch_model.bin'
-real_vocab_size = 50265     # CodeBERT
+# weight_path = '/data1/zhijietang/vul_data/run_logs/pretrain/85/state_epoch_4.th'
+weight_path = '/data1/zhijietang/vul_data/transformers_repos/unixcoder-ver93-e4/state_epoch_4.th'
+target_dump_path = '/data1/zhijietang/vul_data/transformers_repos/unixcoder-ver93-e4/pytorch_model.bin'
+# real_vocab_size = 50265     # CodeBERT / GraphCodeBERT
+real_vocab_size = 51416     # UniXCoder
 
 extra_weight_path = '/data1/zhijietang/vul_data/transformers_repos/codebert-mlm/pytorch_model.bin'
 pretrained_weights_prefix = 'code_embedder.token_embedder_code_tokens.transformer_model.'
@@ -17,8 +19,8 @@ vocab_embedding_key = 'embeddings.word_embeddings.weight'
 extra_weights_need_to_be_add = []
 # extra_weights_need_to_be_add = ['pooler.dense.weight', 'pooler.dense.bias'] # These two parameters should be added when doing parallel training
 
-model_to_be_adapt = torch.load(weight_path)
-extra_reference_model = torch.load(extra_weight_path)
+model_to_be_adapt = torch.load(weight_path, map_location='cpu')
+extra_reference_model = torch.load(extra_weight_path, map_location='cpu')
 new_state_dict = {}
 
 # Step 1: Load weights by truncating model name prefix.
