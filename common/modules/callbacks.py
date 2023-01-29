@@ -110,6 +110,7 @@ class SaveEpochStateCallback(TrainerCallback):
             weight_file_name = f'state_epoch_{epoch}.th'
             weight_file_path = os.path.join(self.serialization_dir, weight_file_name)
             trainer._save_model_state(weight_file_path)
+            print(f'[SaveEpochStateCallback] Save weight of {epoch}-th to {weight_file_path}')
 
 
 @TrainerCallback.register('log_grad_norm')
