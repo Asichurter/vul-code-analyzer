@@ -7,9 +7,9 @@
 
 import torch
 
-# weight_path = '/data1/zhijietang/vul_data/run_logs/pretrain/85/state_epoch_4.th'
-weight_path = '/data1/zhijietang/vul_data/transformers_repos/unixcoder-ver93-e4/state_epoch_4.th'
-target_dump_path = '/data1/zhijietang/vul_data/transformers_repos/unixcoder-ver93-e4/pytorch_model.bin'
+# weight_path = '/data1/zhijietang/vul_data/run_logs/pretrain/82/state_epoch_9.th'
+weight_path = '/data1/zhijietang/vul_data/transformers_repos/unixcoder-ver94/state_epoch_9.th'
+target_dump_path = '/data1/zhijietang/vul_data/transformers_repos/unixcoder-ver94/pytorch_model.bin'
 # real_vocab_size = 50265     # CodeBERT / GraphCodeBERT
 real_vocab_size = 51416     # UniXCoder
 
