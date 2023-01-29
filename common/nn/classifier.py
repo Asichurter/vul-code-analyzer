@@ -4,6 +4,8 @@ import torch
 from torch import nn
 
 from allennlp.common import Registrable
+from transformers import RobertaConfig
+from transformers.models.roberta.modeling_roberta import RobertaClassificationHead
 
 from common.nn.mlp import mlp_block
 
@@ -94,3 +96,50 @@ class LinearSigmoidClassifier(LinearSoftmaxClassifier):
         logits = self.sigmoid(logits).squeeze(-1)
         pred_idxes = (logits > 0.5).long()
         return logits, pred_idxes
+
+# MODEL_CLASSES = {
+#     'gpt2': (GPT2Config, GPT2LMHeadModel, GPT2Tokenizer),
+#     'openai-gpt': (OpenAIGPTConfig, OpenAIGPTLMHeadModel, OpenAIGPTTokenizer),
+#     'bert': (BertConfig, BertForMaskedLM, BertTokenizer),
+#     'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaTokenizer),
+#     'distilbert': (DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer)
+# }
+
+@Classifier.register('roberta_binary_header')
+class RobertaBinaryHeader(Classifier):
+    """
+        Use RobertaHeader as classifier, as CodeXGLUE benchmark.
+    """
+    def __init__(self,
+                 model_name_or_path: str,
+                 return_logits: bool = True):
+        config = RobertaConfig.from_pretrained(model_name_or_path)
+        config.num_labels = 1
+        super().__init__(1)
+
+        encoder = RobertaClassificationHead(config)
+        self.encoder = encoder
+        self.config = config
+        self.return_logits = return_logits
+
+    def forward(self, feature: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        # Since RobertaHeader expect input shape [bsz, len, dim],
+        # we have to expand the `seq` dimension of squeezed features.
+        feature = feature.unsqueeze(1)
+
+        outputs = self.encoder(feature)
+        logits = outputs
+        probs = torch.sigmoid(logits)
+
+        if logits.size(-1) > 1:
+            pred_idxes = torch.max(logits, dim=-1).indices
+        else:
+            pred_idxes = (probs > 0.5).long().squeeze(-1)
+
+        if self.return_logits:
+            return logits, pred_idxes
+        else:
+            return probs, pred_idxes
+
+    def get_exp_input_dim(self) -> int:
+        return self.config.hidden_size

@@ -1,5 +1,5 @@
 from .modules.callbacks import EpochPrintCallback, ModelParamStatCallback, SaveEpochModelCallback, SaveEpochStateCallback, PartialLoadStateDictCallback, AddPretrainedVocabTokensCallback
-from .nn.classifier import LinearSoftmaxClassifier, LinearSigmoidClassifier
+from .nn.classifier import LinearSoftmaxClassifier, LinearSigmoidClassifier, RobertaBinaryHeader
 from .nn.loss_func import NllLoss, BinaryCrossEntropyLoss, CrossEntropyLoss, BCELoss, BCEFocalLoss
 from .nn.pooler import ClsPooler, MeanPooler
 from .modules.code_cleaner import SpaceSubCodeCleaner, PreLineTruncateCodeCleaner, SpaceCodeCleanerV2, MultipleNewLineCodeCleaner
