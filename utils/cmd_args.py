@@ -22,6 +22,29 @@ def make_cli_args(one_bar_args: Dict, two_bar_args: Dict, skip_none: bool = Fals
         args += arg
     return args
 
+def make_cli_args_v2(one_bar_args: Dict, two_bar_args: Dict, no_val_keep_str: str = '__NO_VAL__'):
+    """
+    V2: Skip all the items with None value. To leave an argument with no val, set its val to `no_val_keep_str`.
+    """
+    args = ''
+    for argkey, argval in one_bar_args.items():
+        if argval is None:
+            continue
+        elif argval == no_val_keep_str:
+            arg = f' -{argkey}'
+        else:
+            arg = f' -{argkey} {argval}'
+        args += arg
+    for argkey, argval in two_bar_args.items():
+        if argval is None:
+            continue
+        elif argval  == no_val_keep_str:
+            arg = f' --{argkey}'
+        else:
+            arg = f' --{argkey} {argval}'
+        args += arg
+    return args
+
 def read_train_from_config_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-config', type=str, default='', help='config path of training')
@@ -55,14 +78,20 @@ def read_cv_train_from_config_args():
     parser.add_argument('-config', type=str, required=True, help='config path of training')
     parser.add_argument('-run_log_dir', type=str, default='reveal_new', help='config path of training')
     parser.add_argument('-version', type=str, required=True, help='subfoler name under run log directory')
-    parser.add_argument('-dataset', type=str, required=True, help='which dataset to test on')
+    parser.add_argument('-cv_data_base_path', type=str, required=True, help='base path for cv data')
+
+    parser.add_argument('-dataset', type=str, default=None, help='which dataset to test on')
+    parser.add_argument('-subfolder', default=None, type=str)
+
     parser.add_argument('-average', type=str, required=True, help='average method for metric calculation, "binary", "macro" or "minor"...')
+    parser.add_argument('-extra_averages', type=str, default=None, help='extra average method for metric calculation, "binary", "macro" or "minor"..., split by comma')
     parser.add_argument('-cv', type=int, default=5, help='number of cross-validation')
-    parser.add_argument('-subfolder', required=True, type=str)
     parser.add_argument('-test_filenames', type=str, default='model.tar.gz', help='model file names after training, splitted by comma')
-    parser.add_argument('-eval_script', type=str, default='evaluate_reveal.py', help='model file names after training, splitted by comma')
+    parser.add_argument('-eval_script', type=str, default='eval_classification', help='model file names after training, splitted by comma')
     parser.add_argument('-title', type=str, default='', help='title for reporting cv results')
     parser.add_argument('-test_file_name', type=str, default='test.json', help='filename of the tested data')
+    parser.add_argument('-extra_eval_configs', default="{}", type=str, help="Json str to configure params to eval script")
+
     parser.add_argument('--no_train', action='store_true', help='whether do train from scratch')
     parser.add_argument('--disable_friendly_logging', action='store_true', help='whether to disable file_friendly_logging of allennlp.train')
     return parser.parse_args()
