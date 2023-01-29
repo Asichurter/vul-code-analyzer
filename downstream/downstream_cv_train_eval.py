@@ -11,7 +11,7 @@ import subprocess
 base_dir = json.load(open('global_vars.json'))[platform.node()]['base_dir']
 sys.path.extend([f'/{base_dir}/zhijietang/projects/vul-code-analyzer'])
 
-from utils.cmd_args import read_cv_train_from_config_args, make_cli_args
+from utils.cmd_args import read_cv_train_from_config_args, make_cli_args_v2
 from utils.file import dump_json, dump_text, load_text
 from utils import GlobalLogger as mylogger
 from downstream.scripts.aggre_multi_results import count_mean_metrics
@@ -66,22 +66,23 @@ for split in range(args.cv):
         patience = 5
         mylogger.info('reveal_cv_helper', f'Start to test Version {args.version}, Split {split}, File {test_model_file_name}')
         test_cmd_args = {
-            'dataset': args.dataset,
+            # 'dataset': args.dataset,
             'version': args.version,
-            'subfolder': args.subfolder,
-            'subset': f'split_{split}',
+            # 'subfolder': args.subfolder,
+            # 'subset': f'split_{split}',
+            'data_base_path': f'{args.cv_data_base_path}/split_{split}/',
             'model_name': test_model_file_name,
             'data_file_name': data_file_name,
             'run_log_dir': args.run_log_dir,
             'split': split,
             'cuda': cuda_device,
-            'average': args.average
+            'average': args.average,
+            'extra_averages': args.extra_averages,
+            **json.loads(args.extra_eval_configs)
         }
-        test_cmd_arg_str = make_cli_args(test_cmd_args, {})
+        two_bar_args = {'dump_scores': "__NO_VAL__"}
+        test_cmd_arg_str = make_cli_args_v2(test_cmd_args, two_bar_args)
         test_cmd = f"{python_bin} {eval_script_path}{test_cmd_arg_str}"
-        # test_cmg = f"{python_bin} {eval_script_path} -version {args.version} -subfolder {args.subfolder} -subset split_{split} " \
-        #            f"-model_name {test_model_file_name} -data_file_name {data_file_name} -run_log_dir {args.run_log_dir} " \
-        #            f"-split {split} -cuda {cuda_device}"
 
         # Try multiple times for test script running
         while patience > 0:
@@ -95,7 +96,7 @@ for split in range(args.cv):
         if patience == 0:
             mylogger.error('test', f'Fail to run test for split {split}, patience runs out.')
 
-count_mean_metrics(args.run_log_dir, args.version, args.title, args.cv)
+count_mean_metrics(args.run_log_dir, args.version, args.title, args.cv, base_dir)
 
 # Exit to release GPU memory
 sys.exit(0)
