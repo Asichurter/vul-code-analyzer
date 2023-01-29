@@ -103,6 +103,8 @@ class BCELoss(LossFunc):
         # pred, label = self.align_pred_label_batch_size(pred, label)
         # pred = pred.view(pred.size(0),)
         # label = label.view(pred.size(0),)
+        if len(pred.size()) > 1 and len(pred.size()) > len(label.size()):
+            pred = pred.squeeze(-1)
         return torch.nn.functional.binary_cross_entropy(pred, label.float(), **kwargs)  # float type tensor is expected for 'label'
 
 
