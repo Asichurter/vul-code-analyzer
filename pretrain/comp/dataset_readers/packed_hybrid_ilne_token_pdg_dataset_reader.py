@@ -41,6 +41,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
                  optimize_data_edge_input_memory: bool = True,
                  ctrl_edge_version: str = 'v1',                     # To adapt new version of ctrl edges input, only line-level ctrl edges but not data edges
                  token_data_edge_mask_strategy: str = 'none',       # To exclude some token-pairs when calculating loss of token-data prediction, set this param
+                 token_data_edge_mask_kwargs: Dict = {},              # Param of token_mask_method
                  model_mode: Optional[str] = None,
                  debug: bool = False,
                  is_train: bool = True,
@@ -69,6 +70,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
             'v2': self.make_ctrl_edge_matrix_v2,
         }[ctrl_edge_version]
         self.token_data_edge_mask_func = dispatch_token_mask_method(token_data_edge_mask_strategy)
+        self.token_data_edge_mask_kwargs = token_data_edge_mask_kwargs
         self.model_mode = model_mode
 
         self.is_train = is_train
@@ -278,7 +280,7 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
             return False, Instance({})
 
         mlm_sampling_weights, _ = self.mlm_sampling_weight_method(raw_code, tokenized_code)
-        token_data_token_mask = self.token_data_edge_mask_func(raw_code, tokenized_code)
+        token_data_token_mask = self.token_data_edge_mask_func(raw_code, tokenized_code, **self.token_data_edge_mask_kwargs)
 
         check_pretrain_code_field_correctness(self.special_tokenizer_token_handler_type, raw_code, tokenized_code, token_line_idxes, line_edges)
         fields = {
