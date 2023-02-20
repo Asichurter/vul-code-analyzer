@@ -16,6 +16,10 @@ def paired_token_colored_print(raw_text, token_a: Token, token_b: Token, color_i
     print(raw_text[sorted_ranges[1][1]:], end='')
 
 def multi_paired_token_colored_print(raw_text: str, data_edges: List[Union[str,Tuple[int,int]]], tokens: List[Token], processed: bool = False):
+    if len(data_edges) == 0:
+        print(raw_text)
+        return
+
     tokens_a, tokens_b = [], []
     for edge in data_edges:
         if not processed:
@@ -42,6 +46,38 @@ def multi_paired_token_colored_print(raw_text: str, data_edges: List[Union[str,T
             print(raw_text[spans[i][1]:spans[i+1][0]], end='')
         else:
             print(raw_text[spans[i][1]:], end='')
+
+def multi_paired_token_tagged_print(raw_text: str, data_edges: List[Union[str, Tuple[int, int]]], tokens: List[Token], processed: bool = False):
+    tokens_a, tokens_b = [], []
+    for edge in data_edges:
+        if not processed:
+            sid, eid = edge.split()
+            sid, eid = int(sid), int(eid)
+        else:
+            sid, eid = edge
+        # Check token in truncated range
+        if sid >= len(tokens) or eid >= len(tokens):
+            continue
+        else:
+            tokens_a.append(tokens[sid])
+            tokens_b.append(tokens[eid])
+
+    assert len(tokens_a) == len(tokens_b)
+    spans_a = [(t.idx, t.idx_end, i) for i,t in enumerate(tokens_a)]
+    spans_b = [(t.idx, t.idx_end, i) for i,t in enumerate(tokens_b)]
+    spans = spans_a + spans_b
+    spans = sorted(spans, key=lambda x: x[0])
+    print(raw_text[:spans[0][0]], end='')
+    for i in range(len(spans)):
+        print(raw_text[spans[i][0]:spans[i][1]]+f'([{spans[i][2]}])', end='')
+        if i != len(spans) - 1:
+            print(raw_text[spans[i][1]:spans[i+1][0]], end='')
+        else:
+            print(raw_text[spans[i][1]:], end='')
+
+    print("\n\nLegends:")
+    legend = {i: raw_text[spans_a[i][0]:spans_a[i][1]] for i in range(len(spans_a))}
+    print(legend)
 
 def print_code_with_line_num(code: str, start_line_num: int = 0):
     newline_idx = code.find('\n')
