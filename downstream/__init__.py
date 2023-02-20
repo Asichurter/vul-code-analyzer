@@ -6,7 +6,9 @@ from .comp.dataset_readers.cwe_pred_dataset_reader import CwePredBaseDatasetRead
 from .comp.dataset_readers.cvss_metric_dataset_reader import CvssMetricPredBaseDatasetReader
 from .comp.dataset_readers.line_vul_dataset_reader import LineVulDetectBaseDatasetReader
 from .comp.metrics.multiclass_classification import MulticlassClassificationMetric, MultitaskMulticlassClassificationMetric
+from .comp.metrics.matthews_corrcoef import MatthewsCorrcoefMetric
 from .comp.nn.seq2vec.cls_avg_seq2vec import ClsAvgSeq2Vec
+from .comp.token_embedders.pretrained_codet5_embedder import PretrainedCodeT5Embedder
 
 from .model.vul_func_predictor import VulFuncPredictor
 from .model.multi_task_classifier import MultiTaskClassifier
