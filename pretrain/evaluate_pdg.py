@@ -2,6 +2,7 @@ import sys
 from pprint import pprint
 from typing import Tuple, List
 from tqdm import tqdm
+from pprint import pprint
 
 import torch
 from allennlp.data.data_loaders import MultiProcessDataLoader
@@ -106,4 +107,5 @@ save_evaluate_results(metrics,
                           'test_model_path': model_path
                       },
                       model_base_path+'eval_results.json')
+pprint(get_detailed_metrics(model))
 # sys.exit(0)
