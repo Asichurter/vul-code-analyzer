@@ -22,6 +22,11 @@ cfg_ctrl_edge_exclude_node_types = [cfg_entry_node_type, cfg_exit_node_type,
                                     cfg_exception_node_type, cfg_error_node_type]
 
 
+################################################################################################
+# ------------------------------------------------------------------
+# Preprocessing utils.
+# ------------------------------------------------------------------
+
 def clean_signature_line(code: str) -> str:
     code = re.sub(r'( |\t|\n)+', ' ', code)
     return code
@@ -63,14 +68,18 @@ def read_csv_as_dict(path):
 
     return dict_rows
 
+################################################################################################
 
-##############################################################################
+
+
+
+################################################################################################
 # Apply multi v.s. multi strategy
 # ---------------------------------------------------------------------------
 #       That is to say, if identifier A depends on B and both identifiers
 #       are tokenized into multiple wordpieces, how we handle this actually
 #       "multi-to-multi" case and generate wordpiece-level edge connections.
-##############################################################################
+#===============================================================================================
 def apply_multi_vs_multi_strategy(obj_list: List, strategy: str) -> List:
     if strategy == 'all':
         return obj_list
@@ -78,6 +87,15 @@ def apply_multi_vs_multi_strategy(obj_list: List, strategy: str) -> List:
         return obj_list[0:1]
     else:
         raise NotImplementedError(f'No such multi_vs_multi strategy: {strategy}')
+
+################################################################################################
+
+
+
+################################################################################################
+# ------------------------------------------------------------------
+# Node and edge class for general graph parsing and retrieving.
+# ------------------------------------------------------------------
 
 class Node:
     def __init__(self, cmd, nid, node_type, node_code, node_loc, function_id, child_num, is_cfg_node, operator, base_type, complete_type, identifier):
@@ -187,6 +205,16 @@ def find_child_identifier_node_ids(root_node_id: int, nodes: List[Node]) -> List
 
     return identifier_node_ids
 
+################################################################################################
+
+
+
+
+################################################################################################
+# ------------------------------------------------------------------
+# Char span utils.
+# ------------------------------------------------------------------
+
 def parse_char_span(loc: str, signature_shift_len: int = 0) -> Tuple[int, int]:
     line_num, _, _, char_start, char_end = loc.split(':')
     # FixBug: end idx need to increase 1
@@ -236,12 +264,23 @@ def intersect_char_spans_with_allennlp_tokens(tokens: List[Token],
 
     return allennlp_target_token_indices
 
+################################################################################################
+
+
+
+
+################################################################################################
+# ------------------------------------------------------------------
+# Token-level PDG extraction, including a dreprecated
+# def-use based data dependency extraction method.
+# ------------------------------------------------------------------
+
 def build_token_level_data_pdg_old(data_edges: List[Edge],
                                    pdg_nodes: List[Node],
                                    tokens: List[Token],
                                    signature_len: int,
                                    multi_vs_multi_strategy: str) -> Iterable[str]:
-    ################################################################################################
+    #==============================================================================================
     # DEPRECATED: NOT CONSIDER CONTROL FLOW. Use "build_token_level_data_pdg" instead.
     # ------------------------------------------------------------------------------------------
     # We use hacks to process data dependencies:
@@ -252,7 +291,7 @@ def build_token_level_data_pdg_old(data_edges: List[Edge],
     # ------------------------------------------------------------------------------------------
     # 2. Some symbols, like member visiting of pointers and undefined functions, can be properly
     #    filtered by checking if a used symbol has been defined previously.
-    ################################################################################################
+    #==============================================================================================
     symbol_def_nid_map = {}
     existed_use_nid_and_symbol_nid_pairs = set()
     pdg_data_edges = set()
@@ -414,6 +453,15 @@ def build_token_level_pdg_struct(raw_code: str,
 
     return token_ctrl_pdg_edges, token_data_pdg_edges
 
+################################################################################################
+
+
+
+
+################################################################################################
+# ------------------------------------------------------------------
+# Line-level PDG extraction.
+# ------------------------------------------------------------------
 
 def build_line_level_ctrl_pdg(ctrl_edges: List[Edge],
                               pdg_nodes: List[Node],
@@ -460,6 +508,16 @@ def build_line_level_pdg_struct(node_rows: List[List],
 
     line_ctrl_pdg_edges = build_line_level_ctrl_pdg(ctrl_edges, pdg_nodes, cfg_ctrl_edge_exclude_nids)
     return line_ctrl_pdg_edges, None
+
+################################################################################################
+
+
+
+
+################################################################################################
+# ------------------------------------------------------------------
+# Common utils.
+# ------------------------------------------------------------------
 
 def extract_line_num(loc_str: str):
     if loc_str.count(':') == 4:
@@ -538,6 +596,8 @@ def translate_processed_data_edges(data_edges: List[Tuple[int, int]],
             continue
         print(tokens[sid], tokens[eid])
     print('*'*50)
+
+################################################################################################
 
 if __name__ == '__main__':
     import time
