@@ -7,7 +7,10 @@ import Levenshtein
 
 from utils.file import load_text
 
-LANGUAGE = Language('build/my-languages.so', 'cpp')
+try:
+    LANGUAGE = Language('build/my-languages.so', 'cpp')
+except Exception:
+    LANGUAGE = Language('../../build/my-languages.so', 'cpp')
 parser = Parser()
 parser.set_language(LANGUAGE)
 
