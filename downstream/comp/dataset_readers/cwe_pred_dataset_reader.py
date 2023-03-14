@@ -7,6 +7,7 @@ from allennlp.data.dataset_readers import DatasetReader
 from allennlp.data.fields import TextField, TensorField, LabelField
 
 from common.modules.code_cleaner import CodeCleaner, PreLineTruncateCodeCleaner
+from common.modules.label_extract import LabelExtractor
 from utils.downstream_utils.tokenize_utils import downstream_tokenize
 from utils.file import read_dumped
 
@@ -22,6 +23,7 @@ class CwePredBaseDatasetReader(DatasetReader):
                  code_cleaner: CodeCleaner = PreLineTruncateCodeCleaner(200),  # Pre-truncate lines to prevent long time waited
                  tokenizer_type: str = 'codebert',
                  model_mode: Optional[str] = None,
+                 label_extractor: Optional[LabelExtractor] = None,
                  debug: bool = False,
                  **kwargs):
         super().__init__(**kwargs)
@@ -34,11 +36,15 @@ class CwePredBaseDatasetReader(DatasetReader):
         self.code_cleaner = code_cleaner
         self.tokenizer_type = tokenizer_type
         self.model_mode = model_mode
+        self.label_extractor = label_extractor
         self.debug = debug
 
     def text_to_instance(self, data_item: Dict) -> Tuple[bool,Optional[Instance]]:
         code = data_item['code']
-        cwe_id = data_item['cwe_id']
+        if self.label_extractor is None:
+            cwe_id = data_item['cwe_id']
+        else:
+            cwe_id = self.label_extractor.extract_label(data_item)
         if cwe_id in self.cwe_label_map:
             label = self.cwe_label_map[cwe_id]
         else:
