@@ -117,7 +117,7 @@ def update_token_data_tokenizer(check_overwrite=True):
 
     multi_vs_multi_strategy = 'first'
 
-    tokenizer_name = 'microsoft/graphcodebert-base'
+    tokenizer_name = 'microsoft/codebert-base'
     tokenizer_name_postfix = ''
     tokenizer_type = 'codebert'
     tokenizer = PretrainedTransformerTokenizer(tokenizer_name)

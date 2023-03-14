@@ -8,12 +8,12 @@
 import torch
 
 # weight_path = '/data1/zhijietang/vul_data/run_logs/pretrain/82/state_epoch_9.th'
-weight_path = '/data1/zhijietang/vul_data/transformers_repos/unixcoder-ver94/state_epoch_9.th'
-target_dump_path = '/data1/zhijietang/vul_data/transformers_repos/unixcoder-ver94/pytorch_model.bin'
-# real_vocab_size = 50265     # CodeBERT / GraphCodeBERT
-real_vocab_size = 51416     # UniXCoder
+weight_path = '/data2/zhijietang/vul_data/run_logs/pretrain/101/state_epoch_9.th'
+target_dump_path = '/data2/zhijietang/vul_data/transformers_repos/pdbert-tokenmask-noise10/pytorch_model.bin'
+real_vocab_size = 50265     # CodeBERT / GraphCodeBERT
+# real_vocab_size = 51416     # UniXCoder
 
-extra_weight_path = '/data1/zhijietang/vul_data/transformers_repos/codebert-mlm/pytorch_model.bin'
+extra_weight_path = '/data2/zhijietang/vul_data/transformers_repos/codebert-mlm/pytorch_model.bin'
 pretrained_weights_prefix = 'code_embedder.token_embedder_code_tokens.transformer_model.'
 vocab_embedding_key = 'embeddings.word_embeddings.weight'
 extra_weights_need_to_be_add = []
