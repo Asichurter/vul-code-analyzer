@@ -8,3 +8,4 @@ from .modules.tokenizer.pretrained_mismatch_truncate_tokenizer import Pretrained
 from .modules.tokenizer.pretrained_bpe_tokenizer import PretrainedBPETokenzizer
 from .modules.tokenizer.simple_split_tokenizer import SimpleSplitTokenizer
 from .comp.nn.line_extractor import AvgLineExtractor
+from .modules.label_extract import LabelExtractor
