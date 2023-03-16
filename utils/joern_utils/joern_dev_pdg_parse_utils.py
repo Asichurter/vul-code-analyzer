@@ -12,6 +12,7 @@ data_def_dependency_edge_type = 'DEF'
 reaches_dependenct_edge_type = 'REACHES'
 symbol_node_type = 'Symbol'
 identifier_node_type = 'Identifier'
+cfg_edge_type = 'FLOWS_TO'
 cfg_entry_node_type = 'CFGEntryNode'
 cfg_exit_node_type = 'CFGExitNode'
 cfg_infinite_node_type = 'InfiniteForNode'
@@ -144,7 +145,7 @@ class Node:
 # Change this list if other types of edges are of interest
 accepted_edge_types = [ast_edge_type, ctrl_dependency_edge_type,
                        data_use_dependency_edge_type, data_def_dependency_edge_type,
-                       reaches_dependenct_edge_type]
+                       reaches_dependenct_edge_type, cfg_edge_type]
 
 class Edge:
     def __init__(self, start_id, end_id, edge_type, edge_var):
@@ -170,6 +171,9 @@ class Edge:
 
     def is_reaches_edge(self):
         return self.type == reaches_dependenct_edge_type
+
+    def is_cfg_edge(self):
+        return self.type == cfg_edge_type
 
     def __str__(self):
         return f'start: {self.sid}, end: {self.eid}, type: {self.type}, var: {self.var}'
@@ -508,6 +512,44 @@ def build_line_level_pdg_struct(node_rows: List[List],
 
     line_ctrl_pdg_edges = build_line_level_ctrl_pdg(ctrl_edges, pdg_nodes, cfg_ctrl_edge_exclude_nids)
     return line_ctrl_pdg_edges, None
+
+################################################################################################
+
+
+
+
+################################################################################################
+# ------------------------------------------------------------------
+# Line-level CFG extraction.
+# ------------------------------------------------------------------
+def build_line_level_cfg_struct(node_rows: List[List],
+                                edge_lists: List[List]):
+    """
+    Note: This implementation is almost the same as line-level pdg extraction,
+          except focusing on different type of edges.
+    """
+    # Build nodes
+    pdg_nodes: List[Optional[Node]] = [None] * (len(node_rows)+1)
+    cfg_ctrl_edge_exclude_nids = []
+    for node_row in node_rows:
+        node = Node(*node_row)
+        nid = node.nid
+        pdg_nodes[nid] = node
+        if node.node_type in cfg_ctrl_edge_exclude_node_types:
+            cfg_ctrl_edge_exclude_nids.append(nid)
+
+    # Build edges
+    cfg_edges: List[Edge] = []
+    for edge_list in edge_lists:
+        edge = Edge.build_edge(edge_list)
+        if edge is not None:
+            if edge.is_cfg_edge():
+                cfg_edges.append(edge)
+
+    # This is a hack, since building cfg also relies on line number as ctrl PDG,
+    # we reuse it here for convenience.
+    line_cfg_edges = build_line_level_ctrl_pdg(cfg_edges, pdg_nodes, cfg_ctrl_edge_exclude_nids)
+    return line_cfg_edges
 
 ################################################################################################
 
