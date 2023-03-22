@@ -385,6 +385,8 @@ def build_token_level_data_pdg(reaches_edges: List[Edge],
     Thus we still only focus on the identifiers from the nodes of the REACHES edge, and
     every REACHES edge will trigger an attempt of building identifier data dependencies
     between two REACHES nodes.
+
+    Note: Index start from 0.
     """
     all_reaches_token_edges = set()
     for edge in reaches_edges:
@@ -492,6 +494,9 @@ def build_line_level_ctrl_pdg(ctrl_edges: List[Edge],
 
 def build_line_level_pdg_struct(node_rows: List[List],
                                 edge_lists: List[List]):
+    """
+    Note: Index start from 1 in default of Joern.
+    """
     # Build nodes
     pdg_nodes: List[Optional[Node]] = [None] * (len(node_rows)+1)
     cfg_ctrl_edge_exclude_nids = []
