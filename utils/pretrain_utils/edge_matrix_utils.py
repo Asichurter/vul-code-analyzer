@@ -117,4 +117,28 @@ def make_pdg_data_edge_matrix_from_processed_optimized(tokens: List[Token],
     if len(idxes) == 0:
         idxes.append([0,0])
 
-    return torch.Tensor(idxes)
+    return torch.LongTensor(idxes)
+
+def make_line_edge_matrix_from_processed_optimized(line_count: int,
+                                                   processed_line_edges: List[Tuple[int,int]],
+                                                   skip_self_loop: bool = True,
+                                                   shift: int = 1) -> torch.Tensor:
+    """
+        This method convert line-edges to optimized edge format by:
+        1. Truncating by line count.
+        2. Shift indices to make them start from 0.
+    """
+    idxes = []
+    for edge in processed_line_edges:
+        s_line_idx, e_line_idx = edge
+        if s_line_idx > line_count or e_line_idx > line_count:
+            continue
+        if skip_self_loop and s_line_idx == e_line_idx:
+            continue
+        idxes.append([s_line_idx-shift, e_line_idx-shift])
+
+    # Append a placeholder idx, to avoid key missing error when calling "batch_tensor"
+    if len(idxes) == 0:
+        idxes.append([0,0])
+
+    return torch.LongTensor(idxes)

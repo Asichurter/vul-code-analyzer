@@ -25,11 +25,13 @@ class HybridPDGAnalyzer(CodeAnalysis):
         pdg_data_loss_coeff: float = 1.,
         pdg_ctrl_loss_range: List[int] = [-1,-1],
         pdg_data_loss_range: List[int] = [-1,-1],
-        token_edge_input_being_optimized: bool = False,
+        token_edge_input_being_optimized: bool = False,     # For independent-forward model, this should be True to avoid size mismatch.
+        line_edge_input_being_optimized: bool = False,      # For independent-forward model, this should be True to avoid size mismatch.
         add_pdg_loss_metric: bool = True,
+        name: str = "m_pdg",
         **kwargs
     ):
-        super().__init__(vocab, name="hybrid_pdg_analyzer")     # here just give a placeholder value
+        super().__init__(vocab, name=name)     # here just give a placeholder value
         self.line_ctrl_decoder = line_ctrl_decoder
         self.token_data_decoder = token_data_decoder
         self.ctrl_loss_sampler = ctrl_loss_sampler
@@ -42,11 +44,12 @@ class HybridPDGAnalyzer(CodeAnalysis):
         self.pdg_ctrl_loss_range = pdg_ctrl_loss_range
         self.pdg_data_loss_range = pdg_data_loss_range
         self.token_edge_input_being_optimized = token_edge_input_being_optimized
+        self.line_edge_input_being_optimized = line_edge_input_being_optimized
 
         self.add_pdg_loss_metric = add_pdg_loss_metric
         if add_pdg_loss_metric:
-            self.pdg_ctrl_metric = ObjectiveLoss('pdg_ctrl')
-            self.pdg_data_metric = ObjectiveLoss('pdg_data')
+            self.pdg_ctrl_metric = ObjectiveLoss(name+'_ctrl')
+            self.pdg_data_metric = ObjectiveLoss(name+'_data')
 
         self.test = 0
 
@@ -66,6 +69,7 @@ class HybridPDGAnalyzer(CodeAnalysis):
         encoded_line_node_features = code_features["code_line_features"]
         encoded_token_node_features = code_features["code_token_features"]
         code_token_mask = code_features["code_token_mask"]
+        code_line_mask = code_features.get("code_line_mask")
         token_elem_mask = code_features.get("token_data_token_mask", None)
         line_ctrl_edges = code_labels.get("pdg_line_ctrl_edges", None) if code_labels is not None else None
         token_data_edges = code_labels.get("pdg_token_data_edges", None) if code_labels is not None else None
@@ -83,6 +87,8 @@ class HybridPDGAnalyzer(CodeAnalysis):
             })
         # Check pdg loss is in range.
         elif self.check_loss_in_range(self.pdg_ctrl_loss_range):
+            if self.line_edge_input_being_optimized:
+                line_ctrl_edges = construct_matrix_from_opt_edge_idxes(line_ctrl_edges, code_line_mask)
             pdg_ctrl_loss, pdg_ctrl_loss_mask = self.ctrl_loss_sampler.get_loss(line_ctrl_edges, pred_ctrl_edge_probs)
             pdg_ctrl_loss *= self.pdg_ctrl_loss_coeff
 

@@ -7,6 +7,7 @@ from allennlp.training.metrics import Metric
 from pretrain.comp.metric.objective_pretrain_metric import ObjectiveLoss
 from pretrain.comp.nn.loss_sampler.loss_sampler import LossSampler
 from pretrain.comp.nn.struct_decoder.struct_decoder import StructDecoder
+from pretrain.comp.nn.utils import construct_matrix_from_opt_edge_idxes
 from pretrain.model.modules.code_analysis import CodeAnalysis
 
 @CodeAnalysis.register('cfg_analyzer')
@@ -19,21 +20,22 @@ class CFGAnalyzer(CodeAnalysis):
         cfg_metric: Optional[Metric] = None,
         cfg_loss_coeff: float = 1.,
         cfg_loss_range: List[int] = [-1,-1],
-        # token_edge_input_being_optimized: bool = False,
+        line_edge_input_being_optimized: bool = False,      # For independent-forward model, this should be True to avoid size mismatch.
         add_loss_metric: bool = True,
+        name: str = 'm_cfg',
         **kwargs
     ):
-        super().__init__(vocab, "cfg_analyzer")     # here just give a placeholder value
+        super().__init__(vocab, name)     # here just give a placeholder value
         self.cfg_decoder = cfg_decoder
         self.loss_sampler = loss_sampler
         self.cfg_metric = cfg_metric
         self.cfg_loss_coeff = cfg_loss_coeff
         self.cfg_loss_range = cfg_loss_range
-        # self.token_edge_input_being_optimized = token_edge_input_being_optimized
+        self.line_edge_input_being_optimized = line_edge_input_being_optimized
 
         self.add_loss_metric = add_loss_metric
         if add_loss_metric:
-            self.loss_metric = ObjectiveLoss('cfg')
+            self.loss_metric = ObjectiveLoss(name)
 
         self.test = 0
 
@@ -45,6 +47,7 @@ class CFGAnalyzer(CodeAnalysis):
             Using the embedded token & line features to complete CFG prediction.
         """
         encoded_line_node_features = code_features["code_line_features"]
+        code_line_mask = code_features["code_line_mask"]
         cfg_line_edges = code_labels.get("cfg_line_edges", None) if code_labels is not None else None
 
         # Shape: [batch, vn, vn, 4]
@@ -58,6 +61,8 @@ class CFGAnalyzer(CodeAnalysis):
             })
         # Check pdg loss is in range.
         elif self.check_loss_in_range(self.cfg_loss_range):
+            if self.line_edge_input_being_optimized:
+                cfg_line_edges = construct_matrix_from_opt_edge_idxes(cfg_line_edges, code_line_mask)
             cfg_loss, cfg_loss_mask = self.loss_sampler.get_loss(cfg_line_edges, pred_cfg_edge_probs)
             cfg_loss *= self.cfg_loss_coeff
             returned_dict['loss'] = cfg_loss

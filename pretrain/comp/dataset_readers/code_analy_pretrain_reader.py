@@ -16,8 +16,8 @@ from utils.pretrain_utils.check import check_pretrain_code_field_correctness
 from utils.pretrain_utils.mlm_mask_weight_gen import dispatch_mlm_weight_gen_method
 from utils.pretrain_utils.mlm_span_mask_utils import dispatch_mlm_span_mask_tag_method
 from utils.pretrain_utils.edge_matrix_utils import make_pdg_ctrl_edge_matrix_v1, make_pdg_ctrl_edge_matrix_v2, \
-                                                   make_pdg_data_edge_matrix, make_pdg_data_edge_matrix_from_processed, \
-                                                   make_pdg_data_edge_matrix_from_processed_optimized
+    make_pdg_data_edge_matrix, make_pdg_data_edge_matrix_from_processed, \
+    make_pdg_data_edge_matrix_from_processed_optimized, make_line_edge_matrix_from_processed_optimized
 from utils.pretrain_utils.token_pdg_matrix_mask_utils import dispatch_token_mask_method
 
 
@@ -43,6 +43,7 @@ class CodeAnalyPretrainReader(DatasetReader):
                  only_keep_complete_lines: bool = True,
                  hybrid_data_is_processed: bool = False,
                  optimize_data_edge_input_memory: bool = True,
+                 optimize_line_edge_input_memory: bool = False,
                  ################## MLM Config ##################
                  mlm_sampling_weight_strategy: str = 'uniform',
                  mlm_span_mask_strategy: str = 'none',
@@ -71,6 +72,7 @@ class CodeAnalyPretrainReader(DatasetReader):
         self.hybrid_data_is_processed = hybrid_data_is_processed
         self.pdg_token_data_processed_tokenizer_name = pdg_token_data_processed_tokenizer_name
         self.optimize_data_edge_input_memory = optimize_data_edge_input_memory
+        self.optimize_line_edge_input_memory = optimize_line_edge_input_memory
         self.mlm_sampling_weight_method = dispatch_mlm_weight_gen_method(mlm_sampling_weight_strategy)
         self.mlm_span_mask_tag_gen_method = dispatch_mlm_span_mask_tag_method(mlm_span_mask_strategy)
         self.multi_vs_multi_strategy = multi_vs_multi_strategy
@@ -151,14 +153,24 @@ class CodeAnalyPretrainReader(DatasetReader):
         raw_code = self.code_cleaner.clean_code(raw_code)
         tokenized_code = self.code_tokenizer.tokenize(raw_code)
         tokenized_code, token_line_idxes, line_count = self.truncate_and_make_line_index(tokenized_code)
-        pdg_ctrl_edge_matrix = self.ctrl_edge_matrix_func(pdg_line_ctrl_edges, line_count)
 
+        # Make PDG-ctrl matrix.
+        if not self.optimize_line_edge_input_memory:
+            pdg_ctrl_edge_matrix = self.ctrl_edge_matrix_func(pdg_line_ctrl_edges, line_count)
+        else:
+            pdg_ctrl_edge_matrix = make_line_edge_matrix_from_processed_optimized(line_count, pdg_line_ctrl_edges, skip_self_loop=True, shift=1)
+
+        # Make CFG matrix.
         if cfg_line_edges is not None:
-            # This is a hack, since cfg edge is almost similar to pdg line ctrl edges
-            cfg_line_edge_matrix = self.ctrl_edge_matrix_func(cfg_line_edges, line_count)
+            if not self.optimize_line_edge_input_memory:
+                # This is a hack, since cfg edge is almost similar to pdg line ctrl edges
+                cfg_line_edge_matrix = self.ctrl_edge_matrix_func(cfg_line_edges, line_count)
+            else:
+                cfg_line_edge_matrix = make_line_edge_matrix_from_processed_optimized(line_count, cfg_line_edges, skip_self_loop=True, shift=1)
         else:
             cfg_line_edge_matrix = None
 
+        # Make PDG-data matrix.
         # Check whether we need to process the joern-parse token data edges
         if self.hybrid_data_is_processed:
             if self.optimize_data_edge_input_memory:
@@ -217,7 +229,8 @@ class CodeAnalyPretrainReader(DatasetReader):
                     if ok:
                         self.actual_read_samples += 1
                         yield instance
-                except Exception as e:
+                # todo: revert here to include all exceptions
+                except FileNotFoundError as e:
                     logger.error('read', f'error: {e}. \npdg-item content: {pdg_data_item}')
 
         logger.info('reader', f'Total instances loaded by reader: {self.actual_read_samples}')
