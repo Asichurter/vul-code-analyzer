@@ -167,7 +167,11 @@ def construct_matrix_from_opt_edge_idxes(opt_edge_idxes: torch.Tensor, token_mas
     # This process is hard to parallelize, thus we sequentially do it
     for i, matrix_i in enumerate(matrix):
         non_pad_token_num = token_mask[i].sum()
-        matrix_i[non_pad_token_num:,non_pad_token_num:] = pad_value
+        # BugFix 3.22:
+        # We should mask these positions except the left-upper part, rather than only mask the right-lower part.
+        matrix_i[:non_pad_token_num, non_pad_token_num:] = pad_value
+        matrix_i[non_pad_token_num:, :] = pad_value
+        # matrix_i[non_pad_token_num:,non_pad_token_num:] = pad_value
 
     return matrix
 
