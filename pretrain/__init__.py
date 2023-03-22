@@ -15,6 +15,7 @@ from .comp.nn.code_objective.mlm import MlmObjective
 from .comp.nn.code_objective.span_mlm import SpanMlmObjective
 from .comp.nn.code_objective.dim_dropout_contras import DimDropoutContrastiveLearning
 from .comp.nn.code_objective.mask_dropout_contras import MaskDropoutContrastiveLearning
+from .comp.trainer.ind_forward_grad_des_trainer import IndependentForwardOptimGradientDescentTrainer
 
 from .model.pdg_line_analyzer import CodeLinePDGAnalyzer
 from .model.code_objective_trainer import CodeObjectiveTrainer
@@ -22,3 +23,4 @@ from .model.pdg_line_token_hybrid_analyzer import CodeLineTokenHybridPDGAnalyzer
 from .model.modular_code_analy_pretrainer import ModularCodeAnalyPretrainer
 from .model.modules.pdg_analyzer import HybridPDGAnalyzer
 from .model.modules.cfg_analyzer import CFGAnalyzer
+from .model.ind_forward_mod_code_analy_pretrainer import IndependentForwardModularCodeAnalyPretrainer
