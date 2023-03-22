@@ -21,7 +21,8 @@ class ObjectiveLoss(Metric):
         self.total_count = 0
 
     def get_metric(self, reset: bool):
-        avg_loss = self.total_loss / self.total_count
+        # Prevent zero-division
+        avg_loss = 0 if self.total_count==0 else self.total_loss / self.total_count
         if reset:
             self.reset()
         return {f'{self.name}_loss': avg_loss}
