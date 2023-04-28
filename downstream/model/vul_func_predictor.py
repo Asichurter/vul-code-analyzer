@@ -58,18 +58,21 @@ class VulFuncPredictor(Model):
 
     def forward(self,
                 code: TextFieldTensors,
-                label: torch.Tensor,
+                label: Optional[torch.Tensor] = None,
                 **kwargs) -> Dict[str, torch.Tensor]:
         # Shape: [batch, seq, dim]
         encoded_code_outputs = self.embed_encode_code(code)
         code_features = encoded_code_outputs['outputs']
 
         pred_logits, pred_labels = self.classifier(code_features)
-        label = label.squeeze(-1)
-        loss = self.loss_func(pred_logits, label)
 
-        if self.metric is not None:
-            update_metric(self.metric, pred_labels, pred_logits, label)
+        if label is not None:
+            label = label.squeeze(-1)
+            loss = self.loss_func(pred_logits, label)
+            if self.metric is not None:
+                update_metric(self.metric, pred_labels, pred_logits, label)
+        else:
+            loss = None
 
         return {
             'logits': pred_logits,
