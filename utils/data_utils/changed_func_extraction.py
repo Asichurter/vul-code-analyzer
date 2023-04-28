@@ -7,10 +7,21 @@ import Levenshtein
 
 from utils.file import load_text
 
-try:
-    LANGUAGE = Language('build/my-languages.so', 'cpp')
-except Exception:
-    LANGUAGE = Language('../../build/my-languages.so', 'cpp')
+_lib_path_lists = [
+    'build/my-languages.so',
+    '../../build/my-languages.so',
+    '../../../build/my-languages.so',
+    '../build/my-languages.so'
+]
+_lib_loaded = False
+for lib_path in _lib_path_lists:
+    try:
+        LANGUAGE = Language(lib_path, 'cpp')
+        _lib_loaded = True
+    except Exception:
+        print(f'Lib not found at: {lib_path}')
+assert _lib_loaded
+
 parser = Parser()
 parser.set_language(LANGUAGE)
 
@@ -19,6 +30,9 @@ def encode_bytes(cont):
 
 def decode_bytes(bytes_):
     return bytes_.decode('utf-8')
+
+def parse_tree(code_text):
+    return parser.parse(encode_bytes(code_text))
 
 def retrieve_func_defination_nodes(cur_node: ASTNode, hit_nodes: List) -> List:
     # Only retrieve the top func def node
@@ -166,6 +180,10 @@ def extract_changed_cpp_funcs_from_diff(diff: str, compare_direc: bool = True) -
 if __name__ == '__main__':
     # diff_path = '/data1/zhijietang/vul_data/datasets/treevul-CVE/changed_funcs/treevul_filtered_diffs_v2/diffs/abrt---abrt---6e811d78e2719988ae291181f5b133af32ce62d8.diff'
     # diff_path = '/data1/zhijietang/vul_data/datasets/treevul-CVE/changed_funcs/treevul_filtered_diffs_v2/diffs/aawc---unrar---0ff832d31470471803b175cfff4e40c1b08ee779.diff'
-    diff_path = '/data1/zhijietang/vul_data/datasets/treevul-CVE/changed_funcs/treevul_filtered_diffs_v2/diffs/abrt---abrt---4f2c1ddd3e3b81d2d5146b883115371f1cada9f9.diff'
-    diff = load_text(diff_path)
-    changed_funcs, ok = extract_changed_cpp_funcs_from_diff(diff)
+    # diff_path = '/data1/zhijietang/vul_data/datasets/treevul-CVE/changed_funcs/treevul_filtered_diffs_v2/diffs/abrt---abrt---4f2c1ddd3e3b81d2d5146b883115371f1cada9f9.diff'
+    # diff = load_text(diff_path)
+    # changed_funcs, ok = extract_changed_cpp_funcs_from_diff(diff)
+
+    from utils.file import read_dumped
+    datas = read_dumped("/data2/zhijietang/vul_data/datasets/joern_vulberta/packed_hybrid_vol_1.pkl")
+    # tree = parser.parse(encode_bytes())
