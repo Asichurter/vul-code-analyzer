@@ -113,7 +113,7 @@ class IndependentForwardModularCodeAnalyPretrainer(Model):
         obj_output = code_obj(code=code,
                               code_embed_func=self.embed_encode_code,
                               epoch=self.cur_epoch,
-                         **kwargs)
+                              **kwargs)
         obj_loss = obj_output['loss']
         code_obj.update_metric(obj_loss)
 
@@ -130,6 +130,7 @@ class IndependentForwardModularCodeAnalyPretrainer(Model):
                 mlm_sampling_weights: Optional[torch.Tensor] = None,
                 mlm_span_tags: Optional[torch.Tensor] = None,
                 token_data_token_mask: Optional[torch.Tensor] = None,
+                ast_tokens: Optional[TextFieldTensors] = None,
                 meta_data: Optional[List] = [],
                 **kwargs) -> Dict[str, torch.Tensor]:
         """
@@ -145,6 +146,11 @@ class IndependentForwardModularCodeAnalyPretrainer(Model):
         final_loss: torch.Tensor = 0.
         output = {'meta_data': meta_data}
 
+        code_obj_params = {
+            "mlm_sampling_weights": mlm_sampling_weights,       # For MLM
+            "mlm_span_tags": mlm_span_tags,                     # For MLM
+            "ast_tokens":ast_tokens,                            # For AST Contras
+        }
         # Code objective forward: all the objs are from tokens.
         if fwd_type == 'code_obj' or fwd_type == 'full':
             if fwd_type == 'code_obj':
@@ -154,8 +160,7 @@ class IndependentForwardModularCodeAnalyPretrainer(Model):
             for idx in mod_indices:
                 loss, code_obj_output = self.code_obj_forward(self.code_objectives[idx],
                                                               code,
-                                                              mlm_sampling_weights=mlm_sampling_weights,
-                                                              mlm_span_tags=mlm_span_tags)
+                                                              **code_obj_params)
                 final_loss += loss
                 output.update(code_obj_output)
 
