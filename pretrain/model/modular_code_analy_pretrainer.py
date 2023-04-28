@@ -167,8 +167,8 @@ class ModularCodeAnalyPretrainer(Model):
                 code: TextFieldTensors,
                 line_idxes: torch.Tensor,
                 vertice_num: torch.Tensor,
-                pdg_line_ctrl_edges: Optional[torch.Tensor] = None,
-                pdg_token_data_edges: Optional[torch.Tensor] = None,
+                pdg_ctrl_edges: Optional[torch.Tensor] = None,
+                pdg_data_edges: Optional[torch.Tensor] = None,
                 cfg_line_edges: Optional[torch.Tensor] = None,
                 mlm_sampling_weights: Optional[torch.Tensor] = None,
                 mlm_span_tags: Optional[torch.Tensor] = None,
@@ -178,7 +178,7 @@ class ModularCodeAnalyPretrainer(Model):
         """
             Forward with full parameters.
         """
-        if pdg_line_ctrl_edges is not None or pdg_token_data_edges is not None:
+        if pdg_ctrl_edges is not None or pdg_data_edges is not None:
             from_token_pretrain_loss, encoded_code_outputs = self.pretrain_forward_from_token(line_idxes.device, code,
                                                                                               mlm_sampling_weights=mlm_sampling_weights,
                                                                                               mlm_span_tags=mlm_span_tags)
@@ -211,8 +211,8 @@ class ModularCodeAnalyPretrainer(Model):
             'token_data_token_mask': token_data_token_mask,
         }
         code_labels = {
-            'pdg_line_ctrl_edges': pdg_line_ctrl_edges,
-            'pdg_token_data_edges': pdg_token_data_edges,
+            'pdg_ctrl_edges': pdg_ctrl_edges,
+            'pdg_data_edges': pdg_data_edges,
             'cfg_line_edges': cfg_line_edges,
         }
 
