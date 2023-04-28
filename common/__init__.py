@@ -7,5 +7,6 @@ from .modules.balanced_samplers import BinaryDuplicateBalancedIterSampler, Binar
 from .modules.tokenizer.pretrained_mismatch_truncate_tokenizer import PretrainedMismatchTruncateTokenizer
 from .modules.tokenizer.pretrained_bpe_tokenizer import PretrainedBPETokenzizer
 from .modules.tokenizer.simple_split_tokenizer import SimpleSplitTokenizer
+from .modules.tokenizer.ast_serial_tokenizer import ASTSerialTokenizer
 from .comp.nn.line_extractor import AvgLineExtractor
 from .modules.label_extract import LabelExtractor
