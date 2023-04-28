@@ -9,6 +9,8 @@ from allennlp.data.dataset_readers import DatasetReader
 from allennlp.data.fields import TextField, TensorField
 
 from common.modules.code_cleaner import CodeCleaner, TrivialCodeCleaner
+from common.modules.tokenizer.ast_serial_tokenizer import ASTSerialTokenizer
+
 from utils.allennlp_utils.tokenizer_vocab_sensitive_utils import pre_handle_special_tokenizer_tokens, \
     post_handle_special_tokenizer_tokens
 from utils.file import read_dumped
@@ -19,6 +21,8 @@ from utils.pretrain_utils.edge_matrix_utils import make_pdg_ctrl_edge_matrix_v1,
     make_pdg_data_edge_matrix, make_pdg_data_edge_matrix_from_processed, \
     make_pdg_data_edge_matrix_from_processed_optimized, make_line_edge_matrix_from_processed_optimized
 from utils.pretrain_utils.token_pdg_matrix_mask_utils import dispatch_token_mask_method
+from utils.pretrain_utils.ast_utils import dispatch_ast_serial_tokenize_method
+from utils.data_utils.changed_func_extraction import parse_tree
 
 
 @DatasetReader.register('code_analy_pretrain_reader')
@@ -56,6 +60,8 @@ class CodeAnalyPretrainReader(DatasetReader):
                  # ----------------------- Ctrl -----------
                  ctrl_edge_version: str = 'v1',  # To adapt new version of ctrl edges input, only line-level ctrl edges but not data edges
                  ################## CFG Config ##################
+                 ################## AST Contras Config ##################
+                 ast_serial_tokenizer: Optional[ASTSerialTokenizer] = None,     # Set None to disable ast serialization, otherwise AstSerialTokenizer
                  ################## Extra Config ##################
                  debug: bool = False,
                  is_train: bool = True,
@@ -83,6 +89,7 @@ class CodeAnalyPretrainReader(DatasetReader):
         self.token_data_edge_mask_func = dispatch_token_mask_method(token_data_edge_mask_strategy)
         self.token_data_edge_mask_kwargs = token_data_edge_mask_kwargs
         self.model_mode = model_mode
+        self.ast_serial_tokenizer = ast_serial_tokenizer
 
         self.is_train = is_train
         self.actual_read_samples = 0
@@ -197,8 +204,8 @@ class CodeAnalyPretrainReader(DatasetReader):
         fields = {
             'code': TextField(tokenized_code, self.code_token_indexers),
             'line_idxes': TensorField(token_line_idxes),
-            'pdg_line_ctrl_edges': TensorField(pdg_ctrl_edge_matrix),
-            'pdg_token_data_edges': TensorField(pdg_data_edge_matrix),
+            'pdg_ctrl_edges': TensorField(pdg_ctrl_edge_matrix),
+            'pdg_data_edges': TensorField(pdg_data_edge_matrix),
             'cfg_line_edges': TensorField(cfg_line_edge_matrix),
             'vertice_num': TensorField(torch.Tensor([line_count])), # num. of line is vertice num.
             'mlm_sampling_weights': TensorField(mlm_sampling_weights),
@@ -208,6 +215,11 @@ class CodeAnalyPretrainReader(DatasetReader):
         span_tags = self.mlm_span_mask_tag_gen_method(raw_code, tokenized_code)
         if span_tags is not None:
             fields['mlm_span_tags'] = TensorField(span_tags)
+
+        if self.ast_serial_tokenizer is not None:
+            ast_serial_tokens = self.ast_serial_tokenizer.tokenize(raw_code)
+            # AST serial tokens use the same indexer as code
+            fields['ast_tokens'] = TextField(ast_serial_tokens, self.code_token_indexers)
 
         return True, Instance(fields)
 
