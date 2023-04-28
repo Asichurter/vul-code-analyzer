@@ -59,6 +59,7 @@ def generate_data_from_scratch():
     tokenizer_name = 'microsoft/unixcoder-base'
     tokenizer_name_postfix = '/noheader'
     tokenizer_type = 'codebert'
+    mode = None
     tokenizer = PretrainedTransformerTokenizer(tokenizer_name)
     vols = list(range(20,21))
 
@@ -80,7 +81,7 @@ def generate_data_from_scratch():
             raw_code = convert_func_signature_to_one_line(code=line_data['code'], redump=False)
             tokens = tokenizer.tokenize(raw_code)
             tokens = pre_handle_special_tokenizer_tokens(tokenizer_type, tokens)
-            tokens, _ = post_handle_special_tokenizer_tokens(tokenizer_type, (tokens,), None, '<encoder-only>') # mode is only for placeholder
+            tokens, _ = post_handle_special_tokenizer_tokens(tokenizer_type, (tokens,), None, mode) # mode is only for placeholder
             _, token_data_edges = build_token_level_pdg_struct(raw_code, tokens,
                                                                token_data['nodes'], token_data['edges'],
                                                                multi_vs_multi_strategy=multi_vs_multi_strategy,
