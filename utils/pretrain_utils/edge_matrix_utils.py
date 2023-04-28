@@ -53,6 +53,28 @@ def make_pdg_ctrl_edge_matrix_v2(line_edges: List[Tuple[int,int]],
     # Now line index start from 0.
     return matrix[1:, 1:]
 
+def make_pdg_ctrl_edge_matrix_v3(line_edges: List[Tuple[int, int]],
+                                 line_count: int) -> torch.LongTensor:
+    """
+    Make line-level ctrl dependency matrix from edge data.
+    V3: Functionally identical to V2, maybe faster implementation.
+
+    """
+    max_w = torch.Tensor(line_edges).int().max().item()
+    # Also, to cover the last line (line_count-th), we have to allocate one more line here.
+    # Set 1 as default to distinguish from padded positions.
+    matrix = torch.ones((max_w + 1, max_w + 1))
+
+    for edge in line_edges:
+        tail, head = edge
+        matrix[tail, head] = 2
+
+    # Drop 0-th row and column, since line index starts from 1.
+    # Also to cover line_count-th line.
+    # Now line index start from 0.
+    return matrix[1:line_count+1, 1:line_count+1]
+
+
 def make_pdg_data_edge_matrix(raw_code: str,
                               token_nodes: List[List[str]],
                               token_edges: List[List[str]],
