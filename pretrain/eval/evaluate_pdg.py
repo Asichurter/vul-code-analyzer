@@ -8,7 +8,7 @@ import torch
 from allennlp.data.data_loaders import MultiProcessDataLoader
 from allennlp.models.model import Model
 
-sys.path.extend(['/data1/zhijietang/projects/vul-code-analyzer'])
+sys.path.extend(['/data2/zhijietang/projects/vul-code-analyzer'])
 
 # Import modules
 from pretrain import *
@@ -26,8 +26,8 @@ batch_size = 32
 
 vol_start, vol_end = args.vol_range.split(',')
 vol_start, vol_end = int(vol_start), int(vol_end)
-model_base_path = f'/data1/zhijietang/vul_data/run_logs/{args.run_log_dir}/{args.version}/'
-model_path = f'/data1/zhijietang/vul_data/run_logs/{args.run_log_dir}/{args.version}/{args.model_name}'
+model_base_path = f'/data2/zhijietang/vul_data/run_logs/{args.run_log_dir}/{args.version}/'
+model_path = f'/data2/zhijietang/vul_data/run_logs/{args.run_log_dir}/{args.version}/{args.model_name}'
 
 def predict_on_dataloader(_model, _data_loader):
     # all_pred = []
@@ -36,6 +36,7 @@ def predict_on_dataloader(_model, _data_loader):
     with torch.no_grad():
         _model.eval()
         for i, batch in enumerate(tqdm(_data_loader)):
+            batch['forward_step_name'] = 'code_analy-1'     # To adapt independent-forward model
             outputs = _model(**batch)
             # all_pred.extend(outputs['pred'].cpu().detach().tolist())
             # all_score.extend(outputs['logits'].cpu().detach().tolist())

@@ -43,10 +43,10 @@ def set_reader(_reader):
     _reader.is_train = False
     return _reader
 
-cuda_device = 7
-model_path = '/data1/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model_epoch_9.tar.gz'
-config_path = '/data1/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'config.json'
-code_path = '/data1/zhijietang/temp/joern_failed_case_1.cpp'
+cuda_device = 0
+model_path = '/data2/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model_epoch_9.tar.gz'
+config_path = '/data2/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'config.json'
+code_path = '/data2/zhijietang/temp/pdg_parse_example_1.cpp'
 tokenizer_name = 'microsoft/codebert-base'
 
 # f_output = open("/data1/zhijietang/temp/joern_failed_cases/joern_failed_cases_summary", "w")
@@ -108,15 +108,19 @@ def predict_one_file(code_file_path):
     cdg = torch.Tensor(pdg_output['ctrl_edge_labels'])
     ddg = torch.Tensor(pdg_output['data_edge_labels'])
 
+    print(f'Size: CDG: {cdg.size()}, DDG: {ddg.size()}')
+    print(f"DDG: {ddg.nonzero().tolist()}")
+
     print('\n\n' + 'Data-Depedency:\n')
-    # multi_paired_token_colored_print(code, ddg.nonzero().tolist(), tokens, processed=True)
+    multi_paired_token_colored_print(code, ddg.nonzero().tolist(), tokens, processed=True)
+    print("\n")
     multi_paired_token_tagged_print(code, ddg.nonzero().tolist(), tokens, processed=True)
 
     print('\n\n')
     print_code_with_line_num(code, start_line_num=0)
     print(f'\nCtrl-Dependency: {cdg.nonzero().tolist()}')
 
-# predict_one_file(code_path)
+predict_one_file(code_path)
 
 ##################  For Dumping Results of Batched Files ##################
 
