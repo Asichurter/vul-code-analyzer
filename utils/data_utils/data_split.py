@@ -72,6 +72,33 @@ def class_sensitive_random_split_by_list(data_list: Iterable[List], train_ratio,
 
     return trains, validates, tests
 
+def sample_groups(data_items: List[Dict], group_key: str, total: int, group_sample_ratio: Dict[str, float],
+                  strict_sample_check: bool = False):
+    groups = {}
+    for item in data_items:
+        key = str(item[group_key])
+        if key not in group_sample_ratio:
+            continue
+        if key not in groups:
+            groups[key] = []
+        groups[key].append(item)
+
+    sampled = []
+    for g_name, group_items in groups.items():
+        g_num = int(total * group_sample_ratio[g_name])
+        if g_num > len(group_items):
+            msg = f'Group "{g_name}" have no more than {g_num}({total} * {group_sample_ratio[g_name]}) items (only {len(group_items)}).'
+            if strict_sample_check:
+                assert False, msg
+            else:
+                print('\nWarning:' + msg + '\n')
+        group_sampled = random.sample(group_items, g_num)
+        sampled.extend(group_sampled)
+
+    random.shuffle(sampled)
+    return sampled
+
+
 def dump_split_helper(dump_base_path, dump_format='json', *split_outputs):
     train, val, test = split_outputs
     if dump_format == 'json':
