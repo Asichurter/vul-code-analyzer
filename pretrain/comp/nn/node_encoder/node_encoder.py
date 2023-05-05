@@ -4,8 +4,6 @@ import torch
 
 from allennlp.common.registrable import Registrable
 
-print('This is NodeEncoder')
-
 class NodeEncoder(torch.nn.Module, Registrable):
     def __init__(self,
                  input_dim: int,

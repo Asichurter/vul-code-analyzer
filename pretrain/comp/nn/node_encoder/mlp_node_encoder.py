@@ -2,9 +2,7 @@ from typing import List, Dict, Optional
 
 import torch
 
-print('Importing NodeEncoder')
 from pretrain.comp.nn.node_encoder.node_encoder import NodeEncoder
-print('Importing unified_mlp_module')
 from common.nn.mlp import unified_mlp_module
 
 
