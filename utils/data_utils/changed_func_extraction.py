@@ -19,7 +19,7 @@ for lib_path in _lib_path_lists:
         LANGUAGE = Language(lib_path, 'cpp')
         _lib_loaded = True
     except Exception:
-        print(f'Lib not found at: {lib_path}')
+        print(f'[TreeSitter] Lib not found at: {lib_path}, try another.')
 assert _lib_loaded
 
 parser = Parser()
