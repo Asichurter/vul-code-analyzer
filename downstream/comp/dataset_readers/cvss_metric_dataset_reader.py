@@ -53,6 +53,19 @@ class CvssMetricPredBaseDatasetReader(DatasetReader):
 
         return Instance(fields)
 
+    def test_process_data(self, data_item: Dict):
+        code = data_item['code']
+        code = self.code_cleaner.clean_code(code)
+        tokenized_code = downstream_tokenize(self.code_tokenizer, code, self.tokenizer_type, self.model_mode)
+
+        metric_labels = []
+        for metric in self.metrics_to_predict:
+            metric_val = data_item[metric]
+            metric_label = LabelField(metric_val, label_namespace=f'{metric}_labels')
+            metric_labels.append(metric_label)
+
+        return tokenized_code, metric_labels
+
 
     def _read(self, file_path) -> Iterable[Instance]:
         data = read_dumped(file_path)

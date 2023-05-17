@@ -248,6 +248,14 @@ class PackedHybridLineTokenPDGDatasetReader(DatasetReader):
         }
         return True, Instance(fields)
 
+    def process_test_labels(self, raw_code, ctrl_edges, data_edges):
+        raw_code = self.code_cleaner.clean_code(raw_code)
+        tokenized_code = self.code_tokenizer.tokenize(raw_code)
+        tokenized_code, token_line_idxes, line_count = self.truncate_and_make_line_index(tokenized_code)
+        ctrl_matrix = self.ctrl_edge_matrix_func(ctrl_edges, line_count)
+        data_matrix = self.make_data_edge_matrix_from_processed(tokenized_code, data_edges)
+        return ctrl_matrix, data_matrix, line_count
+
     def text_to_instance(self, packed_pdg: Dict) -> Tuple[bool, Instance]:
         if not self.is_train:
             return self._test_text_to_instance(packed_pdg)

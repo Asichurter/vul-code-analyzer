@@ -37,6 +37,7 @@ class FuncVulDetectBaseDatasetReader(DatasetReader):
         self.vul_label_field_key = vul_label_field_key
 
         self.debug = debug
+        self.load_count = 0
 
     def text_to_instance(self, data_item: Dict) -> Instance:
         code = data_item[self.func_code_field_key]
@@ -50,6 +51,15 @@ class FuncVulDetectBaseDatasetReader(DatasetReader):
         }
         return Instance(fields)
 
+    def test_process_data(self, data_item):
+        code = data_item[self.func_code_field_key]
+        label = int(data_item[self.vul_label_field_key])
+
+        code = self.code_cleaner.clean_code(code)
+        tokenized_code = downstream_tokenize(self.code_tokenizer, code, self.tokenizer_type, self.model_mode)
+
+        return tokenized_code, label
+
 
     def _read(self, file_path) -> Iterable[Instance]:
         data = read_dumped(file_path)
@@ -57,3 +67,6 @@ class FuncVulDetectBaseDatasetReader(DatasetReader):
             data = data[:150]
         for item in tqdm(data):
             yield self.text_to_instance(item)
+            self.load_count += 1
+
+        print(f'[Reader] Total {self.load_count} instances loaded from {file_path}')

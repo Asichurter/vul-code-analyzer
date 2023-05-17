@@ -58,6 +58,22 @@ class CwePredBaseDatasetReader(DatasetReader):
         }
         return True, Instance(fields)
 
+    def test_process_data(self, data_item):
+        code = data_item['code']
+        if self.label_extractor is None:
+            cwe_id = data_item['cwe_id']
+        else:
+            cwe_id = self.label_extractor.extract_label(data_item)
+        if cwe_id in self.cwe_label_map:
+            label = self.cwe_label_map[cwe_id]
+        else:
+            return False, None
+
+        code = self.code_cleaner.clean_code(code)
+        tokenized_code = downstream_tokenize(self.code_tokenizer, code, self.tokenizer_type, self.model_mode)
+
+        return tokenized_code, label
+
 
     def _read(self, file_path) -> Iterable[Instance]:
         data = read_dumped(file_path)
