@@ -26,7 +26,7 @@ cuda_device = 0
 batch_size = 32
 
 vol_start, vol_end = 2,2
-model_base_path = f'/data2/zhijietang/vul_data/run_logs/pretrain/200/'
+model_base_path = f'/data2/zhijietang/vul_data/run_logs/pretrain/201/'
 model_path = model_base_path + 'model.tar.gz'
 data_base_path = '/data2/zhijietang/vul_data/datasets/neuralpda/pdbert_format_data/'
 

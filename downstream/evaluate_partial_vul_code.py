@@ -7,8 +7,9 @@ from sklearn.metrics import accuracy_score
 
 from downstream import FuncVulDetectBaseDatasetReader
 from utils.allennlp_utils.build_utils import build_dataset_reader_from_config
+from utils.file import dump_json
 
-model_base_path = '/data2/zhijietang/vul_data/run_logs/vul_func_pred/87/'
+model_base_path = '/data2/zhijietang/vul_data/run_logs/vul_func_pred/204/rs_9/'
 model_name = 'model.tar.gz'
 
 data_base_path = '/data2/zhijietang/vul_data/datasets/neuralpda/vul_snippets/'
@@ -55,4 +56,6 @@ all_preds = predict_on_dataloader(model, data_loader)
 acc = accuracy_score(y_true=[1]*len(all_preds),
                      y_pred=all_preds)
 print(f'\n Accuracy = {round(acc, 4) * 100} ({len(all_preds)} in total)')
+
+dump_json({'acc': round(acc, 4)}, model_base_path+'neuralpda_partial_res.json')
 
