@@ -80,7 +80,7 @@ class LinePDGAnalyzer(CodeAnalysis):
         if pdg_ctrl_edge_labels is None:
             returned_dict.update({
                 'ctrl_edge_logits': pred_ctrl_edge_probs,
-                'ctrl_edge_labels': pred_ctrl_edge_labels,
+                'ctrl_edge_preds': pred_ctrl_edge_labels,
             })
         # Check pdg loss is in range.
         elif self.check_loss_in_range(self.pdg_ctrl_loss_range):
@@ -104,7 +104,7 @@ class LinePDGAnalyzer(CodeAnalysis):
         if pdg_data_edge_labels is None:
             returned_dict.update({
                 'data_edge_logits': pred_data_edge_probs,
-                'data_edge_labels': pred_data_edge_labels,
+                'data_edge_preds': pred_data_edge_labels,
             })
         # Check pdg loss is in range.
         elif self.check_loss_in_range(self.pdg_data_loss_range):
