@@ -18,11 +18,14 @@ from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
 
 from transformers.models.roberta.modeling_roberta import RobertaClassificationHead
 
+sys.path.append("/data2/zhijietang/projects/vul-code-analyzer")
+
 from pretrain import *
 from common import *
 from utils.file import load_text, read_dumped, dump_text
 from utils.allennlp_utils.build_utils import build_dataset_reader_from_config
 from utils.joern_utils.pretty_print_utils import multi_paired_token_colored_print, print_code_with_line_num, multi_paired_token_tagged_print
+from utils.joern_utils.joern_dev_parse import convert_func_signature_to_one_line
 
 class PDGPredictor(Predictor):
     def predict_pdg(self, code: str):
@@ -46,7 +49,7 @@ def set_reader(_reader):
 cuda_device = 0
 model_path = '/data2/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model_epoch_9.tar.gz'
 config_path = '/data2/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'config.json'
-code_path = '/data2/zhijietang/temp/pdg_parse_example_1.cpp'
+code_path = '/data2/zhijietang/vul_data/datasets/docker/fan_dedup/raw_code/vol0/9280.cpp'
 tokenizer_name = 'microsoft/codebert-base'
 
 # f_output = open("/data1/zhijietang/temp/joern_failed_cases/joern_failed_cases_summary", "w")
@@ -102,6 +105,7 @@ predictor = PDGPredictor(model, dataset_reader, frozen=True)
 def predict_one_file(code_file_path):
     print(f'[main] Predicting {code_file_path}')
     code = load_text(code_file_path)
+    code = convert_func_signature_to_one_line(code=code, redump=False)
     tokens = tokenizer.tokenize(code)
     pdg_output = predictor.predict_pdg(code)
 
