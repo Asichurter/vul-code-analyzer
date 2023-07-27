@@ -5,6 +5,9 @@ import torch
 from sklearn.metrics import f1_score
 from tqdm import tqdm
 import numpy
+import sys
+
+sys.path.append("/data2/zhijietang/projects/vul-code-analyzer")
 
 from allennlp.common import JsonDict
 from allennlp.data import Instance, Token
@@ -18,6 +21,9 @@ from common import *
 from utils.file import read_dumped, dump_json
 from utils.allennlp_utils.build_utils import build_dataset_reader_from_config
 from utils.joern_utils.pretty_print_utils import print_code_with_line_num
+from utils.joern_utils.joern_dev_parse import convert_func_signature_to_one_line
+
+cuda_device = 0
 
 class PDGPredictor(Predictor):
     def predict_pdg(self, code: str):
@@ -162,10 +168,10 @@ def cal_f1_from_conf_matrix(conf_m):
     recall = TP / (TP + FN)
     return 2*precision*recall / (precision + recall)
 
+PATH_PREFIX = 'data2'
 
-cuda_device = 0
-model_path = '/data2/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model.tar.gz'
-config_path = '/data2/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'config.json'
+model_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model.tar.gz'
+config_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'config.json'
 tokenizer_name = 'microsoft/codebert-base'
 
 max_lines = 50
@@ -193,33 +199,43 @@ predictor = PDGPredictor(model, dataset_reader, frozen=True)
 
 partial_ctrl_results = {k:numpy.zeros((2,2), dtype=int) for k in Ns}
 partial_data_results = {k:numpy.zeros((2,2), dtype=int) for k in Ns}
+partial_counts = {n:0 for n in Ns}
 
-def eval_partial_for_my_data():
+def eval_partial_for_my_data(data_base_path,
+                             file_name_temp,
+                             dump_path,
+                             vol_range,
+                             max_tokens=512):
     print("Building components...")
-    data_base_path = "/data2/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data/"
-    svol, evol = 221, 228
+    svol, evol = vol_range
     vols = list(range(svol, evol+1))
     pretrained_model = 'microsoft/codebert-base'
-
-    tokenizer = PretrainedTransformerTokenizer(pretrained_model, max_length=256)
+    tokenizer = PretrainedTransformerTokenizer(pretrained_model, max_length=max_tokens)
     results = {}
+    total_instance = 0
 
     for vol in vols:
-        test_file_path = data_base_path + f"packed_hybrid_vol_{vol}.pkl"
+        test_file_path = data_base_path + file_name_temp.format(vol)
         print(f'Eval on Vol.{vol} ...')
         data_items = read_dumped(test_file_path)
+        total_instance += len(data_items)
         for i, data_item in tqdm(enumerate(data_items), total=len(data_items)):
             raw_code = data_item['raw_code']
-            raw_code = process_my_code(raw_code)
+            raw_code = process_my_code(convert_func_signature_to_one_line(code=raw_code, redump=False))
             tokens = tokenizer.tokenize(raw_code)
             max_lines = get_line_count_from_tokens(raw_code, tokens)
             # labels_generator = build_my_partial_ground_truth_pdg(data_item, raw_code, tokens, pretrained_model, max_lines, Ns)
             for n in Ns:
                 if n <= max_lines:
-                    cdg_preds, ddg_preds, cdg_labels, ddg_labels = predict_one_file(raw_code,
-                                                                                    data_item['line_edges'],
-                                                                                    data_item['processed_token_data_edges'][pretrained_model],
-                                                                                    n)
+                    try:
+                        cdg_preds, ddg_preds, cdg_labels, ddg_labels = predict_one_file(raw_code,
+                                                                                        data_item['line_edges'],
+                                                                                        data_item['processed_token_data_edges'][pretrained_model],
+                                                                                        n)
+                    except Exception as e:
+                        print(f"Error when predicting #{i}, n={n}, err: {e}, skipped")
+                        continue
+
                     assert len(cdg_preds) == len(cdg_labels), \
                            f"CDG: pred ({len(cdg_preds)}) != label ({len(cdg_labels)}). \n- Code: {raw_code}"
                     assert len(ddg_preds) == len(ddg_labels), \
@@ -229,6 +245,7 @@ def eval_partial_for_my_data():
                     data_res_m = process_result_as_conf_matrix(ddg_preds, ddg_labels)
                     partial_ctrl_results[n] += ctrl_res_m
                     partial_data_results[n] += data_res_m
+                    partial_counts[n] += 1
 
         for n in Ns:
             c_pairs = int(partial_ctrl_results[n].sum())
@@ -237,6 +254,8 @@ def eval_partial_for_my_data():
             d_f1 = cal_f1_from_conf_matrix(partial_data_results[n]) if d_pairs > 0 else None
             overall_f1 = cal_f1_from_conf_matrix(partial_ctrl_results[n] + partial_data_results[n]) if c_pairs+d_pairs > 0 else None
             n_result = {
+                'total_instance': total_instance,
+                'total_valid_instance': partial_counts[n],
                 'c_pairs': c_pairs,
                 'd_pairs': d_pairs,
                 'ctrl_f1': c_f1 ,
@@ -248,7 +267,16 @@ def eval_partial_for_my_data():
             print(f"N = {n}")
             print(n_result)
 
-    dump_json(results, "/data2/zhijietang/temp/pdbert_intrin_partial_results.json")
+    dump_json(results, dump_path)
 
 if __name__ == '__main__':
-    eval_partial_for_my_data()
+    # eval_partial_for_my_data(data_base_path="/data2/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data/",
+    #                          file_name_temp="packed_hybrid_vol_{}.pkl",
+    #                          dump_path="/data2/zhijietang/temp/icse2024_intrin/pdbert_intrin_partial_256_results.json",
+    #                          vol_range=(9999,9999),
+    #                          max_tokens=256)
+    eval_partial_for_my_data(data_base_path="/data2/zhijietang/vul_data/datasets/docker/fan_dedup/tokenized_packed/",
+                             file_name_temp="packed_hybrid_vol_{}.pkl",
+                             dump_path="/data2/zhijietang/temp/icse2024_intrin/bigvul_partial_512_results.json",
+                             vol_range=(0,0),
+                             max_tokens=512)
