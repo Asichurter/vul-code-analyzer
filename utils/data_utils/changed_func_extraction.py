@@ -11,15 +11,25 @@ _lib_path_lists = [
     'build/my-languages.so',
     '../../build/my-languages.so',
     '../../../build/my-languages.so',
-    '../build/my-languages.so'
+    '../build/my-languages.so',
+    '/data2/zhijietang/projects/vul-code-analyzer/build/my-languages.so',    # vlis7
+    '/data1/zhijietang/projects/vul-code-analyzer/build/my-languages.so',    # vlis6
+    '/data1/zhijietang/temp/language-build/java.so',
 ]
+# Name for tree-sitter lib loading
+lang = 'cpp'    # java
+# Type of function/method declaration
+func_tgt_type = 'method_declaration'    # 'function_definition'
+# Type of the main body of the function/method
+func_body_type = 'block'    #   'compound_statement'
+
 _lib_loaded = False
 for lib_path in _lib_path_lists:
     try:
-        LANGUAGE = Language(lib_path, 'cpp')
+        LANGUAGE = Language(lib_path, lang)
         _lib_loaded = True
-    except Exception:
-        print(f'[TreeSitter] Lib not found at: {lib_path}, try another.')
+    except Exception as e:
+        print(f'[TreeSitter] Lib not found at: {lib_path}, err: {e}, try another.')
 assert _lib_loaded
 
 parser = Parser()
@@ -36,7 +46,7 @@ def parse_tree(code_text):
 
 def retrieve_func_defination_nodes(cur_node: ASTNode, hit_nodes: List) -> List:
     # Only retrieve the top func def node
-    if cur_node.type == 'function_definition':
+    if cur_node.type == func_tgt_type:
         hit_nodes.append(cur_node)
         return hit_nodes
     else:
@@ -60,8 +70,8 @@ def compare_align_funcs_based_on_signatures(a_func_nodes: List[ASTNode], b_func_
         for i, func_node in enumerate(func_nodes):
             func_sig_list = []
             for func_child_node in func_node.children:
-                # Only exclude the compound elem (namely "{}" part) tp generate signature
-                if func_child_node.type != 'compound_statement':
+                # Only exclude the main body of the function (namely "{}" part) to generate signature
+                if func_child_node.type != func_body_type:
                     func_sig_list.append(decode_bytes(func_child_node.text))
             func_sig = ' '.join(func_sig_list)
             sig_to_index[func_sig] = i
@@ -181,9 +191,10 @@ if __name__ == '__main__':
     # diff_path = '/data1/zhijietang/vul_data/datasets/treevul-CVE/changed_funcs/treevul_filtered_diffs_v2/diffs/abrt---abrt---6e811d78e2719988ae291181f5b133af32ce62d8.diff'
     # diff_path = '/data1/zhijietang/vul_data/datasets/treevul-CVE/changed_funcs/treevul_filtered_diffs_v2/diffs/aawc---unrar---0ff832d31470471803b175cfff4e40c1b08ee779.diff'
     # diff_path = '/data1/zhijietang/vul_data/datasets/treevul-CVE/changed_funcs/treevul_filtered_diffs_v2/diffs/abrt---abrt---4f2c1ddd3e3b81d2d5146b883115371f1cada9f9.diff'
-    # diff = load_text(diff_path)
-    # changed_funcs, ok = extract_changed_cpp_funcs_from_diff(diff)
+    diff_path = '/data1/zhijietang/temp/d4j_gson_2.diff'
+    diff = load_text(diff_path)
+    changed_funcs, ok = extract_changed_cpp_funcs_from_diff(diff)
 
-    from utils.file import read_dumped
-    datas = read_dumped("/data2/zhijietang/vul_data/datasets/joern_vulberta/packed_hybrid_vol_1.pkl")
+    # from utils.file import read_dumped
+    # datas = read_dumped("/data2/zhijietang/vul_data/datasets/joern_vulberta/packed_hybrid_vol_1.pkl")
     # tree = parser.parse(encode_bytes())
