@@ -22,6 +22,7 @@ from utils.file import read_dumped, dump_json
 from utils.allennlp_utils.build_utils import build_dataset_reader_from_config
 from utils.joern_utils.pretty_print_utils import print_code_with_line_num
 from utils.joern_utils.joern_dev_parse import convert_func_signature_to_one_line
+from utils.pretrain_utils.mat import remove_consecutive_lines, shift_graph_matrix
 
 cuda_device = 0
 
@@ -123,7 +124,7 @@ def split_partial_code(code: str, n_line: int):
     code_lines = code.split("\n")
     return '\n'.join(code_lines[:n_line])
 
-def predict_one_file(code, ctrl_edges, data_edges, n):
+def predict_one_file(code, ctrl_edges, data_edges, n, del_lines=None):
     code_snippet = split_partial_code(code, n)
     pdg_output = predictor.predict_pdg(code_snippet)
     ctrl_pred, data_pred = pdg_output['ctrl_edge_labels'], pdg_output['data_edge_labels']
@@ -131,6 +132,8 @@ def predict_one_file(code, ctrl_edges, data_edges, n):
     data_pred = torch.IntTensor(data_pred).flatten().tolist()
 
     ctrl_label, data_label, line_count = dataset_reader.process_test_labels(code_snippet, ctrl_edges, data_edges)
+    if del_lines is not None:
+        ctrl_label = shift_graph_matrix(ctrl_label, del_lines)
     # Minus one to revert the real matrix.
     ctrl_label = (ctrl_label-1).flatten().tolist()
     data_label = (data_label-1).flatten().tolist()
@@ -147,9 +150,8 @@ def process_my_code(code: str):
         Here we insert a space into them to prevent from this special case.
     """
     if code[-1] != '\n':
-        return code + '\n'
-    else:
-        return code
+        code = code + '\n'
+    return code
 
 def process_result_as_conf_matrix(predicts, labels):
     """
@@ -205,7 +207,8 @@ def eval_partial_for_my_data(data_base_path,
                              file_name_temp,
                              dump_path,
                              vol_range,
-                             max_tokens=512):
+                             max_tokens=512,
+                             rm_consecutive_lines=False):
     print("Building components...")
     svol, evol = vol_range
     vols = list(range(svol, evol+1))
@@ -217,11 +220,15 @@ def eval_partial_for_my_data(data_base_path,
     for vol in vols:
         test_file_path = data_base_path + file_name_temp.format(vol)
         print(f'Eval on Vol.{vol} ...')
-        data_items = read_dumped(test_file_path)
+        data_items = read_dumped(test_file_path)[:100]  # todo
         total_instance += len(data_items)
         for i, data_item in tqdm(enumerate(data_items), total=len(data_items)):
             raw_code = data_item['raw_code']
             raw_code = process_my_code(convert_func_signature_to_one_line(code=raw_code, redump=False))
+            if rm_consecutive_lines:
+                raw_code, del_line_indices = remove_consecutive_lines(raw_code)
+            else:
+                del_line_indices = None
             tokens = tokenizer.tokenize(raw_code)
             max_lines = get_line_count_from_tokens(raw_code, tokens)
             # labels_generator = build_my_partial_ground_truth_pdg(data_item, raw_code, tokens, pretrained_model, max_lines, Ns)
@@ -231,7 +238,8 @@ def eval_partial_for_my_data(data_base_path,
                         cdg_preds, ddg_preds, cdg_labels, ddg_labels = predict_one_file(raw_code,
                                                                                         data_item['line_edges'],
                                                                                         data_item['processed_token_data_edges'][pretrained_model],
-                                                                                        n)
+                                                                                        n,
+                                                                                        del_line_indices)
                     except Exception as e:
                         print(f"Error when predicting #{i}, n={n}, err: {e}, skipped")
                         continue
@@ -277,6 +285,7 @@ if __name__ == '__main__':
     #                          max_tokens=256)
     eval_partial_for_my_data(data_base_path="/data2/zhijietang/vul_data/datasets/docker/fan_dedup/tokenized_packed/",
                              file_name_temp="packed_hybrid_vol_{}.pkl",
-                             dump_path="/data2/zhijietang/temp/icse2024_intrin/bigvul_partial_512_results.json",
+                             dump_path="/data2/zhijietang/temp/icse2024_intrin/bigvul_partial_512_results_test.json",
                              vol_range=(0,0),
-                             max_tokens=512)
+                             max_tokens=512,
+                             rm_consecutive_lines=True)

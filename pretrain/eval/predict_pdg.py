@@ -1,3 +1,4 @@
+import re
 import time
 import torch
 import os
@@ -17,6 +18,8 @@ from transformers import (WEIGHTS_NAME, AdamW, get_linear_schedule_with_warmup,
                           DistilBertConfig, DistilBertForMaskedLM, DistilBertTokenizer)
 
 from transformers.models.roberta.modeling_roberta import RobertaClassificationHead
+
+from utils.pretrain_utils.mat import remove_consecutive_lines, shift_graph_matrix
 
 sys.path.append("/data2/zhijietang/projects/vul-code-analyzer")
 
@@ -49,7 +52,7 @@ def set_reader(_reader):
 cuda_device = 0
 model_path = '/data2/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model_epoch_9.tar.gz'
 config_path = '/data2/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'config.json'
-code_path = '/data2/zhijietang/vul_data/datasets/docker/fan_dedup/raw_code/vol0/9280.cpp'
+code_path = '/data2/zhijietang/vul_data/datasets/docker/fan_dedup/raw_code/vol0/5092.cpp'
 tokenizer_name = 'microsoft/codebert-base'
 
 # f_output = open("/data1/zhijietang/temp/joern_failed_cases/joern_failed_cases_summary", "w")
@@ -106,11 +109,13 @@ def predict_one_file(code_file_path):
     print(f'[main] Predicting {code_file_path}')
     code = load_text(code_file_path)
     code = convert_func_signature_to_one_line(code=code, redump=False)
+    code, del_line_indices = remove_consecutive_lines(code)
     tokens = tokenizer.tokenize(code)
     pdg_output = predictor.predict_pdg(code)
 
     cdg = torch.Tensor(pdg_output['ctrl_edge_labels'])
     ddg = torch.Tensor(pdg_output['data_edge_labels'])
+    cdg = shift_graph_matrix(cdg, del_line_indices)
 
     print(f'Size: CDG: {cdg.size()}, DDG: {ddg.size()}')
     print(f"DDG: {ddg.nonzero().tolist()}")
