@@ -24,6 +24,8 @@ from utils.file import read_dumped, dump_json
 from utils.allennlp_utils.build_utils import build_dataset_reader_from_config
 from utils.joern_utils.pretty_print_utils import print_code_with_line_num
 from utils.joern_utils.joern_dev_parse import convert_func_signature_to_one_line
+from utils.pretrain_utils.mat import remove_consecutive_lines, shift_edges_in_matrix
+
 
 class PDGPredictor(Predictor):
     def predict_pdg(self, code: str):
@@ -172,13 +174,16 @@ def cal_f1_from_conf_matrix(conf_m):
 
 PATH_PREFIX = 'data2'
 
-model_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model.tar.gz'
-config_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'config.json'
+# model_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model.tar.gz'
+# config_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'config.json'
+model_path = f'/{PATH_PREFIX}/zhijietang/temp/local_archived_pdbert_base.tar.gz'
+config_path = f'/{PATH_PREFIX}/zhijietang/temp/pdbert_archived/raw_config.json'
 tokenizer_name = 'microsoft/codebert-base'
 
 max_lines = 50
 # Last N is only for archoring, not valid
-full_Ns = [3, 5, 8, 10, 12, 15, 18, 20, 22, 25, 27, 30, 10000]
+# full_Ns = [3, 5, 8, 10, 12, 15, 18, 20, 22, 25, 27, 30, 10000]
+full_Ns = [10, 20, 30, 10000]
 
 # f_output = open("/data1/zhijietang/temp/joern_failed_cases/joern_failed_cases_summary", "w")
 # sys.stdout = f_output
@@ -209,14 +214,15 @@ def eval_full_func_for_my_data(data_base_path,
                                file_name_temp,
                                dump_path,
                                vol_range,
-                               max_tokens=512):
+                               max_tokens=512,
+                               rm_consecutive_nls=False):
     print("Building components...")
     svol, evol = vol_range
     vols = list(range(svol, evol+1))
     pretrained_model = 'microsoft/codebert-base'
 
     # No inner truncation to identify full function
-    tokenizer = PretrainedTransformerTokenizer(pretrained_model)
+    tokenizer = PretrainedTransformerTokenizer("/data2/zhijietang/temp/codebert-base")
     results = {}
     total_instance = 0
 
@@ -228,21 +234,28 @@ def eval_full_func_for_my_data(data_base_path,
         for i, data_item in tqdm(enumerate(data_items), total=len(data_items)):
             raw_code = data_item['raw_code']
             raw_code = process_my_code(convert_func_signature_to_one_line(code=raw_code, redump=False))
+            if rm_consecutive_nls:
+                raw_code, del_line_indices = remove_consecutive_lines(raw_code)
+            else:
+                del_line_indices = None
             tokens = tokenizer.tokenize(raw_code)
             # Not full within max_tokens, skip
             if len(tokens) > max_tokens:
                 continue
             max_lines = get_line_count_from_tokens(raw_code, tokens)
+
+            cdg_edges = data_item['line_edges']
+            if rm_consecutive_nls:
+                cdg_edges = shift_edges_in_matrix(cdg_edges, del_line_indices)
+            ddg_edges = data_item['processed_token_data_edges'][pretrained_model]
+
             # labels_generator = build_my_partial_ground_truth_pdg(data_item, raw_code, tokens, pretrained_model, max_lines, Ns)
             for n in full_Ns:
                 # Only work on the first n larger than max_lines, to locale range
                 if n >= max_lines:
                     try:
                         # Set n=max_lines to reuse utils
-                        cdg_preds, ddg_preds, cdg_labels, ddg_labels = predict_one_file(raw_code,
-                                                                                        data_item['line_edges'],
-                                                                                        data_item['processed_token_data_edges'][pretrained_model],
-                                                                                        max_lines)
+                        cdg_preds, ddg_preds, cdg_labels, ddg_labels = predict_one_file(raw_code, cdg_edges, ddg_edges, max_lines)
                     except Exception as e:
                         print(f"Error when predicting #{i}, n={n}, err_type: {type(e)}, err: {e}, skipped")
                         continue
@@ -285,11 +298,12 @@ def eval_full_func_for_my_data(data_base_path,
 if __name__ == '__main__':
     # eval_full_func_for_my_data(data_base_path="/data2/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data/",
     #                            file_name_temp="packed_hybrid_vol_{}.pkl",
-    #                            dump_path="/data2/zhijietang/temp/icse2024_intrin/pdbert_intrin_test_full_256_results.json",
+    #                            dump_path="/data2/zhijietang/temp/icse2024_intrin/test_full_512_fixed.json",
     #                            vol_range=(9999,9999),
-    #                            max_tokens=256)
-    eval_full_func_for_my_data(data_base_path="/data2/zhijietang/vul_data/datasets/docker/fan_dedup/tokenized_packed/",
+    #                            max_tokens=512)
+    eval_full_func_for_my_data(data_base_path="/data2/zhijietang/vul_data/datasets/docker/fan_dedup/tokenized_packed_fixed/",
                                file_name_temp="packed_hybrid_vol_{}.pkl",
-                               dump_path="/data2/zhijietang/temp/icse2024_intrin/bigvul_full_512_results.json",
+                               dump_path="/data2/zhijietang/temp/icse2024_intrin/bigvul_fixed_full_512.json",
                                vol_range=(0, 1),
-                               max_tokens=512)
+                               max_tokens=512,
+                               rm_consecutive_nls=True)

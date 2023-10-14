@@ -4,6 +4,8 @@ from tqdm import tqdm
 
 from allennlp.data.tokenizers import PretrainedTransformerTokenizer
 
+from utils.pretrain_utils.mat import remove_consecutive_lines
+
 sys.path.append("/data2/zhijietang/projects/vul-code-analyzer")
 
 from utils.file import load_pickle, dump_pickle, load_text
@@ -60,9 +62,10 @@ def generate_data_from_scratch():
     # # tgt_dump_base_path_temp = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data/packed_hybrid_vol_{}.pkl'
     # # tgt_dump_base_path_temp = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data_allvs/packed_hybrid_vol_{}.pkl'
 
-    token_level_data_path_temp = '/data2/zhijietang/vul_data/datasets/docker/fan_dedup/joern_parsed/joern_parsed_raw_vol{}.pkl'
-    tgt_dump_base_path_temp = '/data2/zhijietang/vul_data/datasets/docker/fan_dedup/tokenized_packed/packed_hybrid_vol_{}.pkl'
+    token_level_data_path_temp = '/data2/zhijietang/vul_data/datasets/docker/fan_dedup/joern_parsed_fixed/joern_parsed_raw_vol{}.pkl'
+    tgt_dump_base_path_temp = '/data2/zhijietang/vul_data/datasets/docker/fan_dedup/tokenized_packed_fixed/packed_hybrid_vol_{}.pkl'
     vols_range = (0,1)
+    rm_consecutive_nls = True
 
     multi_vs_multi_strategy = 'first'
 
@@ -70,7 +73,7 @@ def generate_data_from_scratch():
     tokenizer_name_postfix = ''
     tokenizer_type = 'codebert'
     mode = None
-    tokenizer = PretrainedTransformerTokenizer(tokenizer_name)
+    tokenizer = PretrainedTransformerTokenizer("/data2/zhijietang/temp/codebert-base")
     vols = list(range(vols_range[0], vols_range[1]+1))
 
     for vol in vols:
@@ -91,6 +94,9 @@ def generate_data_from_scratch():
             # raw_code = convert_func_signature_to_one_line(code=line_data['code'], redump=False)
             raw_code = convert_func_signature_to_one_line(code_path=convert_code_path(token_data['file_path']),
                                                           redump=False)
+            if rm_consecutive_nls:
+                raw_code, del_lines = remove_consecutive_lines(raw_code)
+
             tokens = tokenizer.tokenize(raw_code)
             tokens = pre_handle_special_tokenizer_tokens(tokenizer_type, tokens)
             tokens, _ = post_handle_special_tokenizer_tokens(tokenizer_type, (tokens,), None, mode) # mode is only for placeholder

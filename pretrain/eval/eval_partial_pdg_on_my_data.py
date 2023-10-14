@@ -22,7 +22,7 @@ from utils.file import read_dumped, dump_json
 from utils.allennlp_utils.build_utils import build_dataset_reader_from_config
 from utils.joern_utils.pretty_print_utils import print_code_with_line_num
 from utils.joern_utils.joern_dev_parse import convert_func_signature_to_one_line
-from utils.pretrain_utils.mat import remove_consecutive_lines, shift_graph_matrix
+from utils.pretrain_utils.mat import remove_consecutive_lines, shift_graph_matrix, shift_edges_in_matrix
 
 cuda_device = 0
 
@@ -124,7 +124,7 @@ def split_partial_code(code: str, n_line: int):
     code_lines = code.split("\n")
     return '\n'.join(code_lines[:n_line])
 
-def predict_one_file(code, ctrl_edges, data_edges, n, del_lines=None):
+def predict_one_file(code, ctrl_edges, data_edges, n):
     code_snippet = split_partial_code(code, n)
     pdg_output = predictor.predict_pdg(code_snippet)
     ctrl_pred, data_pred = pdg_output['ctrl_edge_labels'], pdg_output['data_edge_labels']
@@ -132,8 +132,6 @@ def predict_one_file(code, ctrl_edges, data_edges, n, del_lines=None):
     data_pred = torch.IntTensor(data_pred).flatten().tolist()
 
     ctrl_label, data_label, line_count = dataset_reader.process_test_labels(code_snippet, ctrl_edges, data_edges)
-    if del_lines is not None:
-        ctrl_label = shift_graph_matrix(ctrl_label, del_lines)
     # Minus one to revert the real matrix.
     ctrl_label = (ctrl_label-1).flatten().tolist()
     data_label = (data_label-1).flatten().tolist()
@@ -172,12 +170,14 @@ def cal_f1_from_conf_matrix(conf_m):
 
 PATH_PREFIX = 'data2'
 
-model_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model.tar.gz'
-config_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'config.json'
+# model_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model.tar.gz'
+# config_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'config.json'
+model_path = f'/{PATH_PREFIX}/zhijietang/temp/local_archived_pdbert_base.tar.gz'
+config_path = f'/{PATH_PREFIX}/zhijietang/temp/pdbert_archived/raw_config.json'
 tokenizer_name = 'microsoft/codebert-base'
 
 max_lines = 50
-Ns = [3,5,8,10,12,15,18,20,22,25,27,30]
+Ns = [5,10,15,20,25,30]
 
 # f_output = open("/data1/zhijietang/temp/joern_failed_cases/joern_failed_cases_summary", "w")
 # sys.stdout = f_output
@@ -208,38 +208,45 @@ def eval_partial_for_my_data(data_base_path,
                              dump_path,
                              vol_range,
                              max_tokens=512,
-                             rm_consecutive_lines=False):
+                             rm_consecutive_nls=False):
     print("Building components...")
     svol, evol = vol_range
     vols = list(range(svol, evol+1))
     pretrained_model = 'microsoft/codebert-base'
-    tokenizer = PretrainedTransformerTokenizer(pretrained_model, max_length=max_tokens)
+    # tokenizer = PretrainedTransformerTokenizer(pretrained_model, max_length=max_tokens)
+    tokenizer = PretrainedTransformerTokenizer("/data2/zhijietang/temp/codebert-base",
+                                               max_length=max_tokens)
     results = {}
     total_instance = 0
 
     for vol in vols:
         test_file_path = data_base_path + file_name_temp.format(vol)
         print(f'Eval on Vol.{vol} ...')
-        data_items = read_dumped(test_file_path)[:100]  # todo
+        data_items = read_dumped(test_file_path)    # [:100]
         total_instance += len(data_items)
         for i, data_item in tqdm(enumerate(data_items), total=len(data_items)):
             raw_code = data_item['raw_code']
             raw_code = process_my_code(convert_func_signature_to_one_line(code=raw_code, redump=False))
-            if rm_consecutive_lines:
+            if rm_consecutive_nls:
                 raw_code, del_line_indices = remove_consecutive_lines(raw_code)
             else:
                 del_line_indices = None
             tokens = tokenizer.tokenize(raw_code)
             max_lines = get_line_count_from_tokens(raw_code, tokens)
+
+            cdg_edges = data_item['line_edges']
+            if rm_consecutive_nls:
+                cdg_edges = shift_edges_in_matrix(cdg_edges, del_line_indices)
+            ddg_edges = data_item['processed_token_data_edges'][pretrained_model]
+
             # labels_generator = build_my_partial_ground_truth_pdg(data_item, raw_code, tokens, pretrained_model, max_lines, Ns)
             for n in Ns:
                 if n <= max_lines:
                     try:
                         cdg_preds, ddg_preds, cdg_labels, ddg_labels = predict_one_file(raw_code,
-                                                                                        data_item['line_edges'],
-                                                                                        data_item['processed_token_data_edges'][pretrained_model],
-                                                                                        n,
-                                                                                        del_line_indices)
+                                                                                        cdg_edges,
+                                                                                        ddg_edges,
+                                                                                        n)
                     except Exception as e:
                         print(f"Error when predicting #{i}, n={n}, err: {e}, skipped")
                         continue
@@ -251,29 +258,37 @@ def eval_partial_for_my_data(data_base_path,
 
                     ctrl_res_m = process_result_as_conf_matrix(cdg_preds, cdg_labels)
                     data_res_m = process_result_as_conf_matrix(ddg_preds, ddg_labels)
+
+                    c_pairs = int(partial_ctrl_results[n].sum())
+                    if c_pairs > 0:
+                        ctrl_f1_item = cal_f1_from_conf_matrix(ctrl_res_m)
+                        real_n = int(len(cdg_preds) ** 0.5)
+                        pred_edges = torch.LongTensor(cdg_preds).reshape((real_n,real_n)).nonzero()
+                        label_edges = torch.LongTensor(cdg_labels).reshape((real_n,real_n)).nonzero()
+
                     partial_ctrl_results[n] += ctrl_res_m
                     partial_data_results[n] += data_res_m
                     partial_counts[n] += 1
 
-        for n in Ns:
-            c_pairs = int(partial_ctrl_results[n].sum())
-            d_pairs = int(partial_data_results[n].sum())
-            c_f1 = cal_f1_from_conf_matrix(partial_ctrl_results[n]) if c_pairs > 0 else None
-            d_f1 = cal_f1_from_conf_matrix(partial_data_results[n]) if d_pairs > 0 else None
-            overall_f1 = cal_f1_from_conf_matrix(partial_ctrl_results[n] + partial_data_results[n]) if c_pairs+d_pairs > 0 else None
-            n_result = {
-                'total_instance': total_instance,
-                'total_valid_instance': partial_counts[n],
-                'c_pairs': c_pairs,
-                'd_pairs': d_pairs,
-                'ctrl_f1': c_f1 ,
-                'data_f1': d_f1,
-                'overall_f1': overall_f1
-            }
-            results[n] = n_result
-            print("\n" + '*' * 50)
-            print(f"N = {n}")
-            print(n_result)
+    for n in Ns:
+        c_pairs = int(partial_ctrl_results[n].sum())
+        d_pairs = int(partial_data_results[n].sum())
+        c_f1 = cal_f1_from_conf_matrix(partial_ctrl_results[n]) if c_pairs > 0 else None
+        d_f1 = cal_f1_from_conf_matrix(partial_data_results[n]) if d_pairs > 0 else None
+        overall_f1 = cal_f1_from_conf_matrix(partial_ctrl_results[n] + partial_data_results[n]) if c_pairs+d_pairs > 0 else None
+        n_result = {
+            'total_instance': total_instance,
+            'total_valid_instance': partial_counts[n],
+            'c_pairs': c_pairs,
+            'd_pairs': d_pairs,
+            'ctrl_f1': c_f1 ,
+            'data_f1': d_f1,
+            'overall_f1': overall_f1
+        }
+        results[n] = n_result
+        print("\n" + '*' * 50)
+        print(f"N = {n}")
+        print(n_result)
 
     dump_json(results, dump_path)
 
@@ -283,9 +298,9 @@ if __name__ == '__main__':
     #                          dump_path="/data2/zhijietang/temp/icse2024_intrin/pdbert_intrin_partial_256_results.json",
     #                          vol_range=(9999,9999),
     #                          max_tokens=256)
-    eval_partial_for_my_data(data_base_path="/data2/zhijietang/vul_data/datasets/docker/fan_dedup/tokenized_packed/",
+    eval_partial_for_my_data(data_base_path="/data2/zhijietang/vul_data/datasets/docker/fan_dedup/tokenized_packed_fixed/",
                              file_name_temp="packed_hybrid_vol_{}.pkl",
-                             dump_path="/data2/zhijietang/temp/icse2024_intrin/bigvul_partial_512_results_test.json",
-                             vol_range=(0,0),
+                             dump_path="/data2/zhijietang/temp/icse2024_intrin/bigvul_fixed_partial_512.json",
+                             vol_range=(0,1),
                              max_tokens=512,
-                             rm_consecutive_lines=True)
+                             rm_consecutive_nls=False)

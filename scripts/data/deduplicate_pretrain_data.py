@@ -1,8 +1,10 @@
 from tqdm import tqdm
 
 from utils.file import read_dumped, dump_pickle, load_pickle
+from utils.joern_utils.joern_dev_parse import convert_func_signature_to_one_line
+from utils.pretrain_utils.mat import remove_consecutive_lines
 
-pretrain_data_path_temp = '/data1/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data/packed_hybrid_vol_{}.pkl'
+pretrain_data_path_temp = '/data2/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data/packed_hybrid_vol_{}.pkl'
 
 class PDGElem:
     def __init__(self, item):
@@ -44,20 +46,31 @@ def inner_deduplicate(items, code_key='raw_code'):
     return deduplicate_items
 
 def intra_deduplicate(items_base, items_to_dedup,
-                      base_code_key='raw_code', tgt_code_key='raw_code'):
+                      base_code_key='raw_code', tgt_code_key='raw_code',
+                      process=False):
     deduplicated_items = []
-    code_set = set([d[base_code_key] for d in items_base])
+    if process:
+        code_set = set([process_code(d[base_code_key]) for d in items_base])
+    else:
+        code_set = set([d[base_code_key] for d in items_base])
     for item in tqdm(items_to_dedup):
         code = item[tgt_code_key]
+        if process:
+            code = process_code(code)
         if code not in code_set:
             deduplicated_items.append(item)
     return deduplicated_items
+
+def process_code(code: str):
+    code = convert_func_signature_to_one_line(code=code, redump=False)
+    code, _ = remove_consecutive_lines(code)
+    return code
 
 print('Reading vols...')
 # test_set = read_vols_pdg(list(range(221, 229)))
 # valid_set = read_vols_pdg(list(range(201, 221)))
 train_set = read_vols_pdg(list(range(201)))
-fan_dedup = load_pickle("/data1/zhijietang/vul_data/datasets/Fan_et_al/fan_full_data_dedup.pkl")
+fan_dedup = load_pickle("/data2/zhijietang/vul_data/datasets/Fan_et_al/fan_full_data_dedup.pkl")
 
 # print('Inner deduplicating...')
 # test_set_dedup = inner_deduplicate(test_set)
@@ -71,8 +84,9 @@ fan_dedup = load_pickle("/data1/zhijietang/vul_data/datasets/Fan_et_al/fan_full_
 
 print('Intra dedupcaliting...')
 fan_dedup_from_train_set = intra_deduplicate(train_set, fan_dedup,
-                                            base_code_key='raw_code',
-                                             tgt_code_key='code')
+                                             base_code_key='raw_code',
+                                             tgt_code_key='code',
+                                             process=True)
 print(f'Intra-dedup fan-dedup from train set: {len(fan_dedup_from_train_set)} / {len(fan_dedup)}')
 # test_set_intra_dedup = intra_deduplicate(train_set, test_set_dedup)
 # print(f'Intra-dedup test set: {len(test_set_intra_dedup)}')
@@ -81,6 +95,6 @@ print(f'Intra-dedup fan-dedup from train set: {len(fan_dedup_from_train_set)} / 
 
 # dump_pickle(valid_set_intra_dedup, pretrain_data_path_temp.format(999))
 # dump_pickle(test_set_intra_dedup, pretrain_data_path_temp.format(9999))
-dump_pickle(fan_dedup_from_train_set,
-            "/data1/zhijietang/vul_data/datasets/Fan_et_al/fan_full_data_dedup_from_pretrain.pkl")
+# dump_pickle(fan_dedup_from_train_set,
+#             "/data1/zhijietang/vul_data/datasets/Fan_et_al/fan_full_data_dedup_from_pretrain.pkl")
 
