@@ -77,11 +77,44 @@ def get_token_type_char_spans(raw_code: str, token_types: List[str]) -> List[Tup
             identifier_char_spans.append((token_char_spans[i], token_char_spans[i+1]))
     return identifier_char_spans
 
+def lexer_analyze_and_make_allennlp_tokens(raw_code):
+    """
+        This method parse raw code into tokens and convert them into AllenNLP tokens.
+        Included field for token:
+            1.  text
+            2.  idx
+            3.  idx_end
+        Lexer types of tokens are returned separatedly as a list.
 
-if __name__ == "__main__":
-    from allennlp.data.tokenizers import PretrainedTransformerTokenizer
-    tokenizer = PretrainedTransformerTokenizer('microsoft/codebert-base')
-    token_types = ['Token.Name']
-    code = "close_tab(GtkWidget *widget, GdkEventButton *event, display_data_t *display_data)\n{\n\tif (event->button == 3)\n\t\treturn;\n\tworking_sview_config.page_visible[display_data->extra] = false;\n\ttoggle_tab_visiblity(NULL, display_data);\n}"
-    tokens = tokenizer.tokenize(code)
-    char_spans = lexer_match_tokens_and_intersect_allennlp_tokens(code, tokens, token_types, is_filtered_list=False)
+        Return: [Token list, type list]
+    """
+    allennlp_tokens = []
+    token_types = []
+    lexer_tokens = list(cpp_lexer.get_tokens_unprocessed(raw_code))
+    for i,token in enumerate(lexer_tokens):
+        idx, t_type, raw_token = token
+        a_token = Token(text=raw_token, idx=idx)
+        # Handle head & tail
+        if i > 0:
+            allennlp_tokens[-1].idx_end = idx
+        if i == len(lexer_tokens)-1:
+            a_token.idx_end = len(raw_code)
+        allennlp_tokens.append(a_token)
+        token_types.append(t_type)
+    return allennlp_tokens, token_types
+
+
+from utils.file import load_text
+
+if __name__ == '__main__':
+    code = load_text("/data2/zhijietang/vul_data/datasets/docker/fan_dedup/raw_code/vol0/100.cpp")
+    tokens, types = lexer_analyze_and_make_allennlp_tokens(code)
+    a = 0
+
+# if __name__ == "__main__":
+#     from allennlp.data.tokenizers import PretrainedTransformerTokenizer
+#     tokenizer = PretrainedTransformerTokenizer('microsoft/codebert-base')
+#     token_types = ['Token.Name']
+#     code = "close_tab(GtkWidget *widget, GdkEventButton *event, display_data_t *display_data)\n{\n\tif (event->button == 3)\n\t\treturn;\n\tworking_sview_config.page_visible[display_data->extra] = false;\n\ttoggle_tab_visiblity(NULL, display_data);\n}"
+#     tokens = tokenizer.tokenize(code)
+#     char_spans = lexer_match_tokens_and_intersect_allennlp_tokens(code, tokens, token_types, is_filtered_list=False)
