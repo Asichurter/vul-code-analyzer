@@ -168,12 +168,12 @@ def cal_f1_from_conf_matrix(conf_m):
     recall = TP / (TP + FN)
     return 2*precision*recall / (precision + recall)
 
-def cal_metrics_from_results(preds, labels, ill_fill_val=1, as_np_array=True):
-    acc = accuracy_score(labels, preds)
-    precision = precision_score(labels, preds, zero_division=ill_fill_val).item()
-    recall = recall_score(labels, preds, zero_division=ill_fill_val).item()
-    f1 = f1_score(labels, preds, zero_division=ill_fill_val).item()
-    return numpy.array([acc, precision, recall, f1]) if as_np_array else (acc, precision, recall, f1)
+# def cal_metrics_from_results(preds, labels, ill_fill_val=1, as_np_array=True):
+#     acc = accuracy_score(labels, preds)
+#     precision = precision_score(labels, preds, zero_division=ill_fill_val).item()
+#     recall = recall_score(labels, preds, zero_division=ill_fill_val).item()
+#     f1 = f1_score(labels, preds, zero_division=ill_fill_val).item()
+#     return numpy.array([acc, precision, recall, f1]) if as_np_array else (acc, precision, recall, f1)
 
 def cal_metrics_from_conf_mat(conf_m, ill_fill_val=1, as_np_array=True):
     accuracy = (conf_m[0][0] + conf_m[1][1]).item() / conf_m.sum().item()
