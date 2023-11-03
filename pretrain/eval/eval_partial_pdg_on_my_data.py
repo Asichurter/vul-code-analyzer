@@ -168,6 +168,22 @@ def cal_f1_from_conf_matrix(conf_m):
     recall = TP / (TP + FN)
     return 2*precision*recall / (precision + recall)
 
+def cal_metrics_from_results(preds, labels, ill_fill_val=1, as_np_array=True):
+    acc = accuracy_score(labels, preds)
+    precision = precision_score(labels, preds, zero_division=ill_fill_val).item()
+    recall = recall_score(labels, preds, zero_division=ill_fill_val).item()
+    f1 = f1_score(labels, preds, zero_division=ill_fill_val).item()
+    return numpy.array([acc, precision, recall, f1]) if as_np_array else (acc, precision, recall, f1)
+
+def cal_metrics_from_conf_mat(conf_m, ill_fill_val=1, as_np_array=True):
+    accuracy = (conf_m[0][0] + conf_m[1][1]).item() / conf_m.sum().item()
+    p1_cnt = conf_m[1].sum().item()
+    l1_cnt = conf_m[:,1].sum().item()
+    precision = conf_m[1][1].item() / p1_cnt if p1_cnt > 0 else ill_fill_val
+    recall = conf_m[1][1].item() / l1_cnt if l1_cnt > 0 else ill_fill_val
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else ill_fill_val
+    return numpy.array([accuracy, precision, recall, f1]) if as_np_array else (accuracy, precision, recall, f1)
+
 PATH_PREFIX = 'data2'
 
 # model_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model.tar.gz'
@@ -199,8 +215,13 @@ predictor = PDGPredictor(model, dataset_reader, frozen=True)
 # partial_ctrl_labels = {k:[] for k in Ns}
 # partial_data_labels = {k:[] for k in Ns}
 
-partial_ctrl_results = {k:numpy.zeros((2,2), dtype=int) for k in Ns}
-partial_data_results = {k:numpy.zeros((2,2), dtype=int) for k in Ns}
+# micro sub-metrics: TP, FP, TN, FN
+partial_ctrl_micro_results = {k:numpy.zeros((2, 2), dtype=int) for k in Ns}
+partial_data_micro_results = {k:numpy.zeros((2, 2), dtype=int) for k in Ns}
+# macro sub-metrics: acc., prec., rec., f1
+partial_ctrl_macro_results = {k:numpy.zeros((4,)) for k in Ns}
+partial_data_macro_results = {k:numpy.zeros((4,)) for k in Ns}
+partial_overall_macro_results = {k:numpy.zeros((4,)) for k in Ns}
 partial_counts = {n:0 for n in Ns}
 
 def eval_partial_for_my_data(data_base_path,
@@ -208,7 +229,8 @@ def eval_partial_for_my_data(data_base_path,
                              dump_path,
                              vol_range,
                              max_tokens=512,
-                             rm_consecutive_nls=False):
+                             rm_consecutive_nls=False,
+                             reduce: str = 'micro'):
     print("Building components...")
     svol, evol = vol_range
     vols = list(range(svol, evol+1))
@@ -256,26 +278,47 @@ def eval_partial_for_my_data(data_base_path,
                     assert len(ddg_preds) == len(ddg_labels), \
                            f"DDG: pred ({len(ddg_preds)}) != label ({len(ddg_labels)}). \n- Code: {raw_code}"
 
+                    if reduce == 'micro':
+                        ctrl_res_m = process_result_as_conf_matrix(cdg_preds, cdg_labels)
+                        data_res_m = process_result_as_conf_matrix(ddg_preds, ddg_labels)
+                        partial_ctrl_micro_results[n] += ctrl_res_m
+                        partial_data_micro_results[n] += data_res_m
+                    elif reduce == 'macro':
+                        # ctrl_res = cal_metrics_from_results(cdg_preds, cdg_labels, ill_fill_val=1)
+                        # data_res = cal_metrics_from_results(ddg_preds, ddg_labels, ill_fill_val=1)
+                        # overall_res = cal_metrics_from_results(cdg_preds+ddg_preds, cdg_labels+ddg_labels, ill_fill_val=1)
+                        ctrl_res_m = process_result_as_conf_matrix(cdg_preds, cdg_labels)
+                        data_res_m = process_result_as_conf_matrix(ddg_preds, ddg_labels)
+                        overall_res_m = process_result_as_conf_matrix(cdg_preds+ddg_preds, cdg_labels+ddg_labels)
+                        ctrl_res = cal_metrics_from_conf_mat(ctrl_res_m, ill_fill_val=1)
+                        data_res = cal_metrics_from_conf_mat(data_res_m, ill_fill_val=1)
+                        overall_res = cal_metrics_from_conf_mat(overall_res_m, ill_fill_val=1)
+                        partial_ctrl_macro_results[n] += ctrl_res
+                        partial_data_macro_results[n] += data_res
+                        partial_overall_macro_results[n] += overall_res
+                    else:
+                        raise ValueError
+
                     ctrl_res_m = process_result_as_conf_matrix(cdg_preds, cdg_labels)
                     data_res_m = process_result_as_conf_matrix(ddg_preds, ddg_labels)
 
-                    c_pairs = int(partial_ctrl_results[n].sum())
-                    if c_pairs > 0:
-                        ctrl_f1_item = cal_f1_from_conf_matrix(ctrl_res_m)
-                        real_n = int(len(cdg_preds) ** 0.5)
-                        pred_edges = torch.LongTensor(cdg_preds).reshape((real_n,real_n)).nonzero()
-                        label_edges = torch.LongTensor(cdg_labels).reshape((real_n,real_n)).nonzero()
+                    # c_pairs = int(partial_ctrl_micro_results[n].sum())
+                    # if c_pairs > 0:
+                    #     ctrl_f1_item = cal_f1_from_conf_matrix(ctrl_res_m)
+                    #     real_n = int(len(cdg_preds) ** 0.5)
+                    #     pred_edges = torch.LongTensor(cdg_preds).reshape((real_n,real_n)).nonzero()
+                    #     label_edges = torch.LongTensor(cdg_labels).reshape((real_n,real_n)).nonzero()
 
-                    partial_ctrl_results[n] += ctrl_res_m
-                    partial_data_results[n] += data_res_m
+                    partial_ctrl_micro_results[n] += ctrl_res_m
+                    partial_data_micro_results[n] += data_res_m
                     partial_counts[n] += 1
 
     for n in Ns:
-        c_pairs = int(partial_ctrl_results[n].sum())
-        d_pairs = int(partial_data_results[n].sum())
-        c_f1 = cal_f1_from_conf_matrix(partial_ctrl_results[n]) if c_pairs > 0 else None
-        d_f1 = cal_f1_from_conf_matrix(partial_data_results[n]) if d_pairs > 0 else None
-        overall_f1 = cal_f1_from_conf_matrix(partial_ctrl_results[n] + partial_data_results[n]) if c_pairs+d_pairs > 0 else None
+        c_pairs = int(partial_ctrl_micro_results[n].sum())
+        d_pairs = int(partial_data_micro_results[n].sum())
+        c_f1 = cal_f1_from_conf_matrix(partial_ctrl_micro_results[n]) if c_pairs > 0 else None
+        d_f1 = cal_f1_from_conf_matrix(partial_data_micro_results[n]) if d_pairs > 0 else None
+        overall_f1 = cal_f1_from_conf_matrix(partial_ctrl_micro_results[n] + partial_data_micro_results[n]) if c_pairs+d_pairs > 0 else None
         n_result = {
             'total_instance': total_instance,
             'total_valid_instance': partial_counts[n],

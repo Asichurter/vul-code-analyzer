@@ -2,14 +2,14 @@ import re
 import time
 from typing import List, Dict
 import torch
-from sklearn.metrics import f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from tqdm import tqdm
 import numpy
 import sys
 
 sys.path.append("/data2/zhijietang/projects/vul-code-analyzer")
 
-cuda_device = 1
+cuda_device = 0
 
 from allennlp.common import JsonDict
 from allennlp.data import Instance, Token
@@ -22,7 +22,7 @@ from pretrain import *
 from common import *
 from utils.file import read_dumped, dump_json
 from utils.allennlp_utils.build_utils import build_dataset_reader_from_config
-from utils.joern_utils.pretty_print_utils import print_code_with_line_num
+# from utils.joern_utils.pretty_print_utils import print_code_with_line_num
 from utils.joern_utils.joern_dev_parse import convert_func_signature_to_one_line
 from utils.pretrain_utils.mat import remove_consecutive_lines, shift_edges_in_matrix
 
@@ -49,56 +49,56 @@ def set_reader(_reader: CodeAnalyLinePretrainReader, _max_lines):
     # _reader.max_lines = _max_lines
     return _reader
 
-def build_my_partial_ground_truth_pdg(data_item: Dict,
-                                      raw_code: str,
-                                      tokens: List[Token],
-                                      data_dep_label_key: str,
-                                      total_line: int,
-                                      Ns: List[int]):
-    total_token = len(tokens)
-    full_total_line = raw_code.count('\n') + 2
-
-    pdg_ctrl_graph = torch.zeros((full_total_line, full_total_line))
-    pdg_data_graph = torch.zeros((10000, 10000))        # No need of placeholder for tokens
-    if len(data_item['line_edges']) != 0:
-        pdg_ctrl_edge_list = torch.LongTensor(data_item['line_edges'])
-        pdg_ctrl_graph[pdg_ctrl_edge_list[:,0],pdg_ctrl_edge_list[:,1]] = 1
-    # Drop first line
-    pdg_ctrl_graph = pdg_ctrl_graph[1:total_line+1, 1:total_line+1]
-
-    pdg_data_edge_list = data_item['processed_token_data_edges'][data_dep_label_key]
-    if len(pdg_data_edge_list) != 0:
-        pdg_data_edge_list = torch.LongTensor(pdg_data_edge_list)
-        pdg_data_graph[pdg_data_edge_list[:,0],pdg_data_edge_list[:,1]] = 1
-    pdg_data_graph = pdg_data_graph[:total_token, :total_token]
-
-    # Find the char indices of new-lines
-    new_line_indices = []
-    for m in re.finditer('\n', raw_code):
-        new_line_indices.append(m.start())
-    # Add a dummy nl at last to avoid out-of-bound
-    new_line_indices.append(1e10)
-
-    line_limit_to_token_idx = {}
-    cur_line = 1
-    cur_nl_idx = 0
-    for i, t in enumerate(tokens):
-        if t.idx is None:
-            continue
-        while t.idx <= new_line_indices[cur_nl_idx] < t.idx_end:
-            line_limit_to_token_idx[cur_line] = i
-            cur_line += 1
-            cur_nl_idx += 1
-    # Compensate for missing last nl
-    line_limit_to_token_idx[total_line] = len(tokens) - 1
-
-    for n in Ns:
-        if n > total_line:
-            yield [], []
-        else:
-            token_n = line_limit_to_token_idx[n]
-            yield pdg_ctrl_graph[:n, :n].flatten().tolist(), \
-                  pdg_data_graph[:token_n+1, :token_n+1].flatten().tolist()
+# def build_my_partial_ground_truth_pdg(data_item: Dict,
+#                                       raw_code: str,
+#                                       tokens: List[Token],
+#                                       data_dep_label_key: str,
+#                                       total_line: int,
+#                                       Ns: List[int]):
+#     total_token = len(tokens)
+#     full_total_line = raw_code.count('\n') + 2
+#
+#     pdg_ctrl_graph = torch.zeros((full_total_line, full_total_line))
+#     pdg_data_graph = torch.zeros((10000, 10000))        # No need of placeholder for tokens
+#     if len(data_item['line_edges']) != 0:
+#         pdg_ctrl_edge_list = torch.LongTensor(data_item['line_edges'])
+#         pdg_ctrl_graph[pdg_ctrl_edge_list[:,0],pdg_ctrl_edge_list[:,1]] = 1
+#     # Drop first line
+#     pdg_ctrl_graph = pdg_ctrl_graph[1:total_line+1, 1:total_line+1]
+#
+#     pdg_data_edge_list = data_item['processed_token_data_edges'][data_dep_label_key]
+#     if len(pdg_data_edge_list) != 0:
+#         pdg_data_edge_list = torch.LongTensor(pdg_data_edge_list)
+#         pdg_data_graph[pdg_data_edge_list[:,0],pdg_data_edge_list[:,1]] = 1
+#     pdg_data_graph = pdg_data_graph[:total_token, :total_token]
+#
+#     # Find the char indices of new-lines
+#     new_line_indices = []
+#     for m in re.finditer('\n', raw_code):
+#         new_line_indices.append(m.start())
+#     # Add a dummy nl at last to avoid out-of-bound
+#     new_line_indices.append(1e10)
+#
+#     line_limit_to_token_idx = {}
+#     cur_line = 1
+#     cur_nl_idx = 0
+#     for i, t in enumerate(tokens):
+#         if t.idx is None:
+#             continue
+#         while t.idx <= new_line_indices[cur_nl_idx] < t.idx_end:
+#             line_limit_to_token_idx[cur_line] = i
+#             cur_line += 1
+#             cur_nl_idx += 1
+#     # Compensate for missing last nl
+#     line_limit_to_token_idx[total_line] = len(tokens) - 1
+#
+#     for n in Ns:
+#         if n > total_line:
+#             yield [], []
+#         else:
+#             token_n = line_limit_to_token_idx[n]
+#             yield pdg_ctrl_graph[:n, :n].flatten().tolist(), \
+#                   pdg_data_graph[:token_n+1, :token_n+1].flatten().tolist()
 
 def get_line_count_from_tokens(raw_code: str, tokens: List[Token]):
     """
@@ -170,15 +170,32 @@ def cal_f1_from_conf_matrix(conf_m):
     recall = TP / (TP + FN)
     return 2*precision*recall / (precision + recall)
 
+def cal_metrics_from_results(preds, labels, ill_fill_val=1, as_np_array=True):
+    acc = accuracy_score(labels, preds)
+    precision = precision_score(labels, preds, zero_division=ill_fill_val).item()
+    recall = recall_score(labels, preds, zero_division=ill_fill_val).item()
+    f1 = f1_score(labels, preds, zero_division=ill_fill_val).item()
+    return numpy.array([acc, precision, recall, f1]) if as_np_array else (acc, precision, recall, f1)
+
+def cal_metrics_from_conf_mat(conf_m, ill_fill_val=1, as_np_array=True):
+    accuracy = (conf_m[0][0] + conf_m[1][1]).item() / conf_m.sum().item()
+    p1_cnt = conf_m[1].sum().item()
+    l1_cnt = conf_m[:,1].sum().item()
+    precision = conf_m[1][1].item() / p1_cnt if p1_cnt > 0 else ill_fill_val
+    recall = conf_m[1][1].item() / l1_cnt if l1_cnt > 0 else ill_fill_val
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else ill_fill_val
+    return numpy.array([accuracy, precision, recall, f1]) if as_np_array else (accuracy, precision, recall, f1)
 #---------------------------------------------------------------------------
 
 PATH_PREFIX = 'data2'
 
 # model_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model.tar.gz'
 # config_path = f'/{PATH_PREFIX}/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'config.json'
-model_path = f'/{PATH_PREFIX}/zhijietang/temp/local_archived_pdbert_base.tar.gz'
-config_path = f'/{PATH_PREFIX}/zhijietang/temp/pdbert_archived/raw_config.json'
-tokenizer_name = 'microsoft/codebert-base'
+# model_path = f'/{PATH_PREFIX}/zhijietang/temp/local_archived_pdbert_base.tar.gz'
+# config_path = f'/{PATH_PREFIX}/zhijietang/temp/pdbert_archived/raw_config.json'
+model_path = f'/data2/zhijietang/projects/PDBERT/data/models/intrinsic/pdbert_base_with_header.tar.gz'
+config_path = f'/data2/zhijietang/projects/PDBERT/data/models/intrinsic/config.json'
+tokenizer_name = '/data2/zhijietang/projects/PDBERT/data/models/pdbert-base/'
 
 max_lines = 50
 # Last N is only for archoring, not valid
@@ -204,8 +221,13 @@ predictor = PDGPredictor(model, dataset_reader, frozen=True)
 
 #---------------------------------------------------------------------------
 
-full_ctrl_results = {k:numpy.zeros((2, 2), dtype=int) for k in full_Ns}
-full_data_results = {k:numpy.zeros((2, 2), dtype=int) for k in full_Ns}
+# micro sub-metrics: TP, FP, TN, FN
+full_ctrl_micro_results = {k:numpy.zeros((2, 2), dtype=int) for k in full_Ns}
+full_data_micro_results = {k:numpy.zeros((2, 2), dtype=int) for k in full_Ns}
+# macro sub-metrics: acc., prec., rec., f1
+full_ctrl_macro_results = {k:numpy.zeros((4,)) for k in full_Ns}
+full_data_macro_results = {k:numpy.zeros((4,)) for k in full_Ns}
+full_overall_macro_results = {k:numpy.zeros((4,)) for k in full_Ns}
 full_counts = {n:0 for n in full_Ns}
 
 #---------------------------------------------------------------------------
@@ -215,14 +237,15 @@ def eval_full_func_for_my_data(data_base_path,
                                dump_path,
                                vol_range,
                                max_tokens=512,
-                               rm_consecutive_nls=False):
+                               rm_consecutive_nls=False,
+                               reduce: str = 'micro'):
     print("Building components...")
     svol, evol = vol_range
     vols = list(range(svol, evol+1))
     pretrained_model = 'microsoft/codebert-base'
 
     # No inner truncation to identify full function
-    tokenizer = PretrainedTransformerTokenizer("/data2/zhijietang/temp/codebert-base")
+    tokenizer = PretrainedTransformerTokenizer(tokenizer_name)
     results = {}
     total_instance = 0
 
@@ -265,19 +288,44 @@ def eval_full_func_for_my_data(data_base_path,
                     assert len(ddg_preds) == len(ddg_labels), \
                            f"DDG: pred ({len(ddg_preds)}) != label ({len(ddg_labels)}). \n- Code: {raw_code}"
 
-                    ctrl_res_m = process_result_as_conf_matrix(cdg_preds, cdg_labels)
-                    data_res_m = process_result_as_conf_matrix(ddg_preds, ddg_labels)
-                    full_ctrl_results[n] += ctrl_res_m
-                    full_data_results[n] += data_res_m
+                    if reduce == 'micro':
+                        ctrl_res_m = process_result_as_conf_matrix(cdg_preds, cdg_labels)
+                        data_res_m = process_result_as_conf_matrix(ddg_preds, ddg_labels)
+                        full_ctrl_micro_results[n] += ctrl_res_m
+                        full_data_micro_results[n] += data_res_m
+                    elif reduce == 'macro':
+                        # ctrl_res = cal_metrics_from_results(cdg_preds, cdg_labels, ill_fill_val=1)
+                        # data_res = cal_metrics_from_results(ddg_preds, ddg_labels, ill_fill_val=1)
+                        # overall_res = cal_metrics_from_results(cdg_preds+ddg_preds, cdg_labels+ddg_labels, ill_fill_val=1)
+                        ctrl_res_m = process_result_as_conf_matrix(cdg_preds, cdg_labels)
+                        data_res_m = process_result_as_conf_matrix(ddg_preds, ddg_labels)
+                        overall_res_m = process_result_as_conf_matrix(cdg_preds+ddg_preds, cdg_labels+ddg_labels)
+                        ctrl_res = cal_metrics_from_conf_mat(ctrl_res_m, ill_fill_val=1)
+                        data_res = cal_metrics_from_conf_mat(data_res_m, ill_fill_val=1)
+                        overall_res = cal_metrics_from_conf_mat(overall_res_m, ill_fill_val=1)
+                        full_ctrl_macro_results[n] += ctrl_res
+                        full_data_macro_results[n] += data_res
+                        full_overall_macro_results[n] += overall_res
+                    else:
+                        raise ValueError
                     full_counts[n] += 1
                     break
 
     for n in full_Ns:
-        c_pairs = int(full_ctrl_results[n].sum())
-        d_pairs = int(full_data_results[n].sum())
-        c_f1 = cal_f1_from_conf_matrix(full_ctrl_results[n]) if c_pairs > 0 else None
-        d_f1 = cal_f1_from_conf_matrix(full_data_results[n]) if d_pairs > 0 else None
-        overall_f1 = cal_f1_from_conf_matrix(full_ctrl_results[n] + full_data_results[n]) if c_pairs + d_pairs > 0 else None
+        if reduce == 'micro':
+            c_pairs = int(full_ctrl_micro_results[n].sum())
+            d_pairs = int(full_data_micro_results[n].sum())
+            c_f1 = cal_f1_from_conf_matrix(full_ctrl_micro_results[n]) if c_pairs > 0 else None
+            d_f1 = cal_f1_from_conf_matrix(full_data_micro_results[n]) if d_pairs > 0 else None
+            overall_f1 = cal_f1_from_conf_matrix(full_ctrl_micro_results[n] + full_data_micro_results[n]) if c_pairs + d_pairs > 0 else None
+        elif reduce == 'macro':
+            c_pairs = None
+            d_pairs = None
+            c_f1 = full_ctrl_macro_results[n][-1] / full_counts[n]
+            d_f1 = full_data_macro_results[n][-1] / full_counts[n]
+            overall_f1 = full_overall_macro_results[n][-1] / full_counts[n]
+        else:
+            raise ValueError
         n_result = {
             'total_instance': total_instance,
             'total_valid_instance': full_counts[n],
@@ -296,14 +344,15 @@ def eval_full_func_for_my_data(data_base_path,
     print(f"Dump to {dump_path}")
 
 if __name__ == '__main__':
-    # eval_full_func_for_my_data(data_base_path="/data2/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data/",
-    #                            file_name_temp="packed_hybrid_vol_{}.pkl",
-    #                            dump_path="/data2/zhijietang/temp/icse2024_intrin/test_full_512_fixed.json",
-    #                            vol_range=(9999,9999),
-    #                            max_tokens=512)
-    eval_full_func_for_my_data(data_base_path="/data2/zhijietang/vul_data/datasets/docker/fan_dedup/tokenized_packed_fixed/",
+    eval_full_func_for_my_data(data_base_path="/data2/zhijietang/vul_data/datasets/joern_vulberta/packed_process_hybrid_data/",
                                file_name_temp="packed_hybrid_vol_{}.pkl",
-                               dump_path="/data2/zhijietang/temp/icse2024_intrin/bigvul_fixed_full_512.json",
-                               vol_range=(0, 1),
+                               dump_path="/data2/zhijietang/temp/icse2024_mater/pdbert.json",
+                               vol_range=(9999,9999),
                                max_tokens=512,
-                               rm_consecutive_nls=True)
+                               reduce='micro')
+    # eval_full_func_for_my_data(data_base_path="/data2/zhijietang/vul_data/datasets/docker/fan_dedup/tokenized_packed_fixed/",
+    #                            file_name_temp="packed_hybrid_vol_{}.pkl",
+    #                            dump_path="/data2/zhijietang/temp/icse2024_intrin/bigvul_fixed_full_512.json",
+    #                            vol_range=(0, 1),
+    #                            max_tokens=512,
+    #                            rm_consecutive_nls=True)
