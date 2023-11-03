@@ -77,7 +77,7 @@ def get_token_type_char_spans(raw_code: str, token_types: List[str]) -> List[Tup
             identifier_char_spans.append((token_char_spans[i], token_char_spans[i+1]))
     return identifier_char_spans
 
-def lexer_analyze_and_make_allennlp_tokens(raw_code):
+def lexer_analyze_and_make_allennlp_tokens(raw_code, max_len=None):
     """
         This method parse raw code into tokens and convert them into AllenNLP tokens.
         Included field for token:
@@ -91,7 +91,12 @@ def lexer_analyze_and_make_allennlp_tokens(raw_code):
     allennlp_tokens = []
     token_types = []
     lexer_tokens = list(cpp_lexer.get_tokens_unprocessed(raw_code))
+
     for i,token in enumerate(lexer_tokens):
+        if max_len is not None and i == max_len:
+            # BugFix: fix missing idx_end for last token when breaking in advance
+            allennlp_tokens[-1].idx_end = allennlp_tokens[-1].idx + len(allennlp_tokens[-1].text)
+            break
         idx, t_type, raw_token = token
         a_token = Token(text=raw_token, idx=idx)
         # Handle head & tail
