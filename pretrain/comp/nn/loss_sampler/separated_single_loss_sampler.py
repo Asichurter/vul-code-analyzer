@@ -24,6 +24,16 @@ class SeparatedFullSingleLossSampler(LossSampler):
         """
         # Minus one to make label range [0,1].
         edge_matrix -= 1
+        # # Unmatched size found, try to align by clipping.
+        # if edge_matrix.shape != predicted_matrix.shape[:3]:
+        #     minimum_edge_num = min(edge_matrix.size(1), predicted_matrix.size(1))
+        #     edge_matrix_pad = edge_matrix[:, minimum_edge_num:, minimum_edge_num:] + 1
+        #     predicted_matrix_pad = predicted_matrix[:, minimum_edge_num:, minimum_edge_num:] + 1
+        #     assert edge_matrix_pad.sum().item() == 0 and predicted_matrix_pad.sum().item() == 0, \
+        #         f"Find size mismatch between label ({edge_matrix.size(1)}) and predicted ({predicted_matrix.size(1)}), " + \
+        #         f"try to align by clipping but found non-pad elements in the clipped sub-matrix."
+        #     edge_matrix = edge_matrix[:, :minimum_edge_num, :minimum_edge_num]
+        #     predicted_matrix = predicted_matrix[:, :minimum_edge_num, :minimum_edge_num]
         assert edge_matrix.shape == predicted_matrix.shape[:3], \
             f"Unmatched shape between label edges ({edge_matrix.size()}) and predicted edges({predicted_matrix.size()})"
 
@@ -59,8 +69,18 @@ class SeparatedBalancedSingleLossSampler(LossSampler):
                  ) -> Tuple[torch.Tensor, torch.Tensor]:
         # Minus one to make label range [0,1].
         edge_matrix -= 1
-        assert edge_matrix.shape == predicted_matrix.shape, "Unmatched shape between label edges and predicted edges"
-        # assert predicted_matrix.size(1) == 2, "The second dimension should be 2 for data and control predictions"
+        # # Unmatched size found, try to align by clipping.
+        # if edge_matrix.shape != predicted_matrix.shape[:3]:
+        #     minimum_edge_num = min(edge_matrix.size(1), predicted_matrix.size(1))
+        #     edge_matrix_pad = edge_matrix[:, minimum_edge_num:, minimum_edge_num:] + 1
+        #     predicted_matrix_pad = predicted_matrix[:, minimum_edge_num:, minimum_edge_num:] + 1
+        #     assert edge_matrix_pad.sum().item() == 0 and predicted_matrix_pad.sum().item() == 0, \
+        #         f"Find size mismatch between label ({edge_matrix.size(1)}) and predicted ({predicted_matrix.size(1)}), " + \
+        #         f"try to align by clipping but found non-pad elements in the clipped sub-matrix."
+        #     edge_matrix = edge_matrix[:, :minimum_edge_num, :minimum_edge_num]
+        #     predicted_matrix = predicted_matrix[:, :minimum_edge_num, :minimum_edge_num]
+        assert edge_matrix.shape == predicted_matrix.shape[:3], \
+            f"Unmatched shape between label edges ({edge_matrix.size()}) and predicted edges({predicted_matrix.size()})"
 
         elem_mask_matrix = self.get_elem_mask_matrix(edge_matrix, elem_mask).flatten(start_dim=1)
 
