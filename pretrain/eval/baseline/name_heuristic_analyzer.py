@@ -429,7 +429,7 @@ def cal_final_micro_results_from_sub_metrics(path_temp, vols, keys):
         df = df.append([
             [float(key), round(accuracy * 100, 2), round(precision * 100, 2), round(recall * 100, 2), round(f1 * 100, 2)]],
             ignore_index=True)
-    df.to_csv(f"/data2/zhijietang/temp/icse2024_mater/revision/partial/agg_res_micro.csv")
+    df.to_csv(f"/data2/zhijietang/temp/icse2024_mater/baseline/revision/partial/agg_res_micro.csv")
 
 def cal_final_macro_results_from_sub_metrics(path_temp, vols, keys):
     metric_names = ['accuracy', 'precision', 'recall', 'f1', 'lens']
@@ -463,7 +463,7 @@ def cal_final_macro_results_from_sub_metrics(path_temp, vols, keys):
             [float(key), round(accuracy * 100, 2), round(precision * 100, 2), round(recall * 100, 2),
              round(f1 * 100, 2)]],
             ignore_index=True)
-    df.to_csv(f"/data2/zhijietang/temp/icse2024_mater/revision/partial/agg_res_macro.csv")
+    df.to_csv(f"/data2/zhijietang/temp/icse2024_mater/baseline/revision/partial/agg_res_macro.csv")
 
 if __name__ == '__main__':
     # Set "Ns=None" to run full-version, elsewise run partial-version
@@ -481,6 +481,22 @@ if __name__ == '__main__':
     #                             Ns=[5,10,15,20,25,30],
     #                             only_connect_last=True, reduce="macro",
     #                             dump_base_path="/data2/zhijietang/temp/icse2024_mater/revision/partial/")
+    # name_based_data_dep_predict(predict_version='full_v2', vols=list(range(221,229)),
+    #                             Ns=None,
+    #                             only_connect_last=False, reduce="micro",
+    #                             dump_base_path="/data2/zhijietang/temp/icse2024_mater/baseline/revision/full/")
+    # name_based_data_dep_predict(predict_version='full_v2', vols=list(range(221,229)),
+    #                             Ns=None,
+    #                             only_connect_last=False, reduce="macro",
+    #                             dump_base_path="/data2/zhijietang/temp/icse2024_mater/baseline/revision/full/")
+    # name_based_data_dep_predict(predict_version='partial', vols=list(range(221,229)),
+    #                             Ns=[5,10,15,20,25,30],
+    #                             only_connect_last=False, reduce="micro",
+    #                             dump_base_path="/data2/zhijietang/temp/icse2024_mater/baseline/revision/partial/")
+    # name_based_data_dep_predict(predict_version='partial', vols=list(range(221,229)),
+    #                             Ns=[5,10,15,20,25,30],
+    #                             only_connect_last=False, reduce="macro",
+    #                             dump_base_path="/data2/zhijietang/temp/icse2024_mater/baseline/revision/partial/")
 
 
     # cal_final_micro_results_from_sub_metrics("/data2/zhijietang/temp/icse2024_mater/revision/full/heuristic_results_full_v2_micro_edgel_vol{}.json",
@@ -492,7 +508,19 @@ if __name__ == '__main__':
     # cal_final_micro_results_from_sub_metrics("/data2/zhijietang/temp/icse2024_mater/revision/partial/heuristic_results_partial_micro_edgel_vol{}.json",
     #                                          list(range(221, 229)),
     #                                          keys=['5','10','15','20','25','30'])
-    cal_final_macro_results_from_sub_metrics("/data2/zhijietang/temp/icse2024_mater/revision/partial/heuristic_results_partial_macro_edgel_vol{}.json",
+    # cal_final_macro_results_from_sub_metrics("/data2/zhijietang/temp/icse2024_mater/revision/partial/heuristic_results_partial_macro_edgel_vol{}.json",
+    #                                          list(range(221, 229)),
+    #                                          keys=['5','10','15','20','25','30'])
+    cal_final_micro_results_from_sub_metrics("/data2/zhijietang/temp/icse2024_mater/baseline/revision/full/heuristic_results_full_v2_micro_edgef_vol{}.json",
+                                       list(range(221,229)),
+                                       keys = ['0', '10', '20', '30'])
+    cal_final_macro_results_from_sub_metrics("/data2/zhijietang/temp/icse2024_mater/baseline/revision/full/heuristic_results_full_v2_macro_edgef_vol{}.json",
+                                             list(range(221, 229)),
+                                             keys=['0', '10', '20', '30'])
+    cal_final_micro_results_from_sub_metrics("/data2/zhijietang/temp/icse2024_mater/baseline/revision/partial/heuristic_results_partial_micro_edgef_vol{}.json",
+                                             list(range(221, 229)),
+                                             keys=['5','10','15','20','25','30'])
+    cal_final_macro_results_from_sub_metrics("/data2/zhijietang/temp/icse2024_mater/baseline/revision/partial/heuristic_results_partial_macro_edgef_vol{}.json",
                                              list(range(221, 229)),
                                              keys=['5','10','15','20','25','30'])
 

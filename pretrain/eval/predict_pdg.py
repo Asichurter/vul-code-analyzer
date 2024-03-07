@@ -50,10 +50,10 @@ def set_reader(_reader):
     return _reader
 
 cuda_device = 0
-model_path = '/data2/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'model_epoch_9.tar.gz'
-config_path = '/data2/zhijietang/vul_data/run_logs/pretrain/' + '57/' + 'config.json'
-code_path = '/data2/zhijietang/vul_data/datasets/docker/fan_dedup/raw_code/vol0/5092.cpp'
-tokenizer_name = 'microsoft/codebert-base'
+model_path = '/data2/zhijietang/temp/local_archived_pdbert_base.tar.gz'
+config_path = '/data2/zhijietang/temp/pdbert_archived/raw_config.json'
+code_path = '/data2/zhijietang/vul_data/datasets/docker/fan_dedup/raw_code/vol0/7065.cpp'
+tokenizer_name = "/data2/zhijietang/temp/codebert-base"
 
 # f_output = open("/data1/zhijietang/temp/joern_failed_cases/joern_failed_cases_summary", "w")
 # sys.stdout = f_output
@@ -105,6 +105,35 @@ predictor = PDGPredictor(model, dataset_reader, frozen=True)
 
 ##################  For Single Code File ##################
 
+temp_path = '/data2/zhijietang/temp/temp_code.txt'
+code = '''os_erase_area (int top, int left, int bottom, int right)
+{
+    int y, x, i, j;
+    if ((top == 1) && (bottom == h_screen_rows) &&
+	(left == 1) && (right == h_screen_cols)) {
+#ifdef COLOR_SUPPORT
+      bkgdset(u_setup.current_color | ' ');
+      erase();
+      bkgdset(0);
+#else
+      erase();
+#endif
+    } else {
+	int saved_style = u_setup.current_text_style;
+	os_set_text_style(u_setup.current_color);
+	getyx(stdscr, y, x);
+	top--; left--; bottom--; right--;
+	for (i = top; i <= bottom; i++) {
+	  move(i, left);
+	  for (j = left; j <= right; j++)
+	    addch(' ');
+	}
+	move(y, x);
+	os_set_text_style(saved_style);
+    }
+}'''
+dump_text(code, temp_path)
+
 def predict_one_file(code_file_path):
     print(f'[main] Predicting {code_file_path}')
     code = load_text(code_file_path)
@@ -129,7 +158,8 @@ def predict_one_file(code_file_path):
     print_code_with_line_num(code, start_line_num=0)
     print(f'\nCtrl-Dependency: {cdg.nonzero().tolist()}')
 
-predict_one_file(code_path)
+# predict_one_file(code_path)
+predict_one_file(temp_path)
 
 ##################  For Dumping Results of Batched Files ##################
 
